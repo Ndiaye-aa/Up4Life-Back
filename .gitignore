@@ -1,0 +1,33 @@
+# 📦 Dependências
+node_modules/
+dist/
+/build
+
+# 🔑 Segredos e Configurações (CRÍTICO)
+.env
+.env.test
+.env.production
+auth_key.pem
+/DataBase/*.sql
+!/DataBase/seed.sql
+
+# 🛠 IDEs e Ferramentas
+.antigravity/
+.vscode/
+.idea/
+.DS_Store
+*.log
+npm-debug.log*
+.agentrules
+docs/
+
+# 💎 Prisma
+/prisma/migrations/
+# Se você quiser versionar as migrations (recomendado), remova a linha acima.
+# Mantenha apenas o arquivo de sqlite se estiver usando localmente:
+*.db
+*.db-journal
+
+# 🧪 Testes e Cobertura
+/coverage
+/test-results

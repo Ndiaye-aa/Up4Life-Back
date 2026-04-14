@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Personal {
+  id       Int     @id @default(autoincrement())
+  nome     String  @db.VarChar(50)
+  telefone String  @unique @db.VarChar(15)
+  senha    String  @db.VarChar(255)
+  alunos   Aluno[]
+
+  @@map("personal")
+}
+
+model Aluno {
+  id             Int       @id @default(autoincrement())
+  nome           String    @db.VarChar(50)
+  telefone       String    @unique @db.VarChar(15)
+  senha          String    @db.VarChar(255)
+  personalId     Int?      @map("id_personal")
+  sexo           String?   @db.Char(1)
+  nascimento     DateTime? @db.Date
+  historicoSaude String?   @map("historico_saude") @db.Text
+  criadoEm       DateTime? @default(dbgenerated("CURRENT_DATE")) @map("criado_em") @db.Date
+
+  personal Personal? @relation(fields: [personalId], references: [id], onDelete: SetNull)
+
+  @@map("aluno")
+}
