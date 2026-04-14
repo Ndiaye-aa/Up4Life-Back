@@ -1,90 +1,73 @@
-# ⚙️ Up4Life - API (Backend)
+# ⚙️ Up4Life - API Engine
 
-Esta é a API RESTful do ecossistema **Up4Life**, responsável pela inteligência de negócio, persistência de dados e segurança da plataforma. Construída com **NestJS**, a API garante uma arquitetura escalável e modular para a gestão de alunos, treinos e avaliações físicas.
+O **Up4Life Backend** é uma API RESTful robusta desenvolvida em NestJS, responsável pela gestão de dados antropométricos, prescrição de treinamentos e controle de acesso para o ecossistema Up4Life. A aplicação utiliza uma arquitetura baseada em serviços para garantir cálculos precisos de índices de saúde e integridade referencial entre personal e aluno.
 
-## 🚀 Tecnologias Utilizadas
+## 🛠️ Stack Tecnológica
 
-* **Framework:** [NestJS](https://nestjs.com/) (Node.js)
+* **Framework:** [NestJS](https://nestjs.com/)
 * **Linguagem:** TypeScript
+* **ORM:** [Prisma](https://www.prisma.io/) (Recomendado para PostgreSQL)
 * **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/)
-* **ORM:** [Prisma](https://www.prisma.io/) (ou TypeORM, conforme sua escolha)
-* **Autenticação:** JWT (Integrado com NextAuth no Frontend)
-* **Validação:** Class-validator & Zod
-* **Documentação:** Swagger (Opcional)
+* **Segurança:** BCrypt (Hash de senhas) e JWT (Autenticação)
+* **Cálculos:** Lógica customizada para IMC, RCQ e Composição Corporal.
 
 ---
 
-## 🏗️ Arquitetura do Banco de Dados
+## 🗄️ Modelagem de Dados (Entity-Relationship)
 
-A API gerencia as seguintes entidades principais e seus relacionamentos:
+O banco de dados foi projetado para suportar o acompanhamento histórico e a evolução do aluno:
 
-* **Users & Roles:** Diferenciação entre `PERSONAL` (Admin) e `ALUNO` (User).
-* **Vínculos:** Relacionamento N:1 entre Alunos e um Personal específico.
-* **Treinos:** Estrutura de planilhas contendo múltiplos exercícios, séries, repetições e cargas.
-* **Avaliações:** Registros históricos de medidas corporais (Peso, % de Gordura, Perímetros).
-
----
-
-## 🛣️ Endpoints Principais (API Reference)
-
-### Autenticação & Usuários
-* `POST /auth/login` - Validação de credenciais.
-* `POST /users` - Cadastro de novos usuários.
-* `GET /users/me` - Retorna os dados do perfil logado.
-
-### Gestão de Alunos (Exclusivo Personal)
-* `GET /alunos` - Lista todos os alunos vinculados ao Personal.
-* `POST /alunos` - Vincula um novo aluno através de convite/email.
-
-### Módulo de Treinos
-* `GET /treinos/:alunoId` - Retorna o cronograma de treinos do aluno.
-* `POST /treinos` - Cria um novo plano de treino (Personal).
-* `PATCH /treinos/:id/concluir` - Marca exercício ou treino como finalizado (Aluno).
-
-### Avaliações Físicas
-* `GET /avaliacoes/:alunoId` - Histórico de evolução física.
-* `POST /avaliacoes` - Registro de nova medição.
+* **Personal:** Gestor do sistema (Admin).
+* **Aluno:** Cliente vinculado a um Personal, contendo histórico de saúde e dados demográficos.
+* **Avaliação:** Registro de medidas corporais (perímetros e dobras cutâneas) e cálculos automáticos de índices (IMC, IAC, % Gordura).
+* **Treino & Itens:** Cabeçalho do plano de treino e a lista técnica de exercícios (séries, repetições, carga, descanso e ordem).
+* **Exercícios:** Catálogo global de exercícios e grupos musculares.
 
 ---
 
-## ⚙️ Instalação e Execução
+## 🚀 Backlog de Implementação
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/seu-usuario/up4life-backend.git](https://github.com/seu-usuario/up4life-backend.git)
-    ```
+### Épico 1: Fundação & Segurança
+- [ ] Setup do ambiente NestJS + PostgreSQL.
+- [ ] Implementação de Migrations com as entidades `Personal` e `Aluno`.
+- [ ] Auth Service: Cadastro e Login com BCrypt e JWT.
+- [ ] Middleware de validação de Roles (Personal vs Aluno).
 
-2.  **Instale as dependências:**
-    ```bash
-    npm install
-    ```
+### Épico 2: Gestão de Alunos
+- [ ] CRUD de Alunos (Vinculação obrigatória ao `idpersonal`).
+- [ ] Implementação do campo `nascimento` (DATE) e `criadoEm`.
+- [ ] Filtro de segurança: Personal só acessa seus próprios alunos.
 
-3.  **Configuração do Banco (PostgreSQL):**
-    Certifique-se de ter um banco Postgres rodando e configure o arquivo `.env`:
-    ```env
-    DATABASE_URL="postgresql://user:password@localhost:5432/up4life"
-    JWT_SECRET="sua_chave_secreta_aqui"
-    ```
+### Épico 3: Módulo de Treinos (The Core)
+- [ ] Cadastro de Catálogo de Exercícios.
+- [ ] Engine de Montagem de Treino: Relação entre `Treino` e `Treino_Item`.
+- [ ] Lógica de ordenação de exercícios na prescrição.
 
-4.  **Rodar Migrations:**
-    ```bash
-    npx prisma migrate dev # Caso use Prisma
-    ```
-
-5.  **Inicie a aplicação:**
-    ```bash
-    npm run start:dev
-    ```
+### Épico 4: Engine de Avaliação Física
+- [ ] Endpoint de recebimento de medidas (Dobras e Perímetros).
+- [ ] **Service de Inteligência:**
+    - Cálculo automático de **IMC**, **IAC** e **RCQ**.
+    - Cálculo de Composição Corporal (% Gordura, Massa Magra/Óssea/Residual).
+- [ ] Histórico evolutivo para consumo de gráficos no Frontend.
 
 ---
 
-## 🛠️ Regras de Negócio Implementadas
+## 🔌 Endpoints de Exemplo (Destaques)
 
-1.  **Isolamento de Dados:** Um Personal nunca pode visualizar ou editar dados de alunos que não estão vinculados ao seu `Personal_ID`.
-2.  **Hierarquia de Acesso:** Apenas usuários com role `PERSONAL` possuem permissão de escrita (`POST/PATCH/DELETE`) em treinos e avaliações.
-3.  **Integridade:** O histórico de avaliações é imutável para garantir a precisão dos gráficos de evolução temporal.
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/auth/register` | Cadastro de Personal/Aluno. |
+| `GET` | `/alunos` | Lista alunos vinculados ao Personal logado. |
+| `POST` | `/avaliacoes` | Registra medidas e retorna índices calculados. |
+| `GET` | `/treinos/:alunoId` | Retorna a planilha de treino completa do aluno. |
 
 ---
+
+## ⚙️ Como Executar
+
+1. **Clone o repositório:**
+   ```bash
+   git clone [https://github.com/seu-usuario/up4life-backend.git](https://github.com/seu-usuario/up4life-backend.git)
 
 ## 📝 Padrão de Commits
 
