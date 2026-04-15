@@ -67,7 +67,7 @@ O banco de dados foi projetado para suportar o acompanhamento histórico e a evo
 
 1. **Clone o repositório:**
    ```bash
-   git clone [https://github.com/seu-usuario/up4life-backend.git](https://github.com/seu-usuario/up4life-backend.git)
+   git clone https://github.com/Ndiaye-aa/Up4Life-Back.git
 
 ## 📝 Padrão de Commits
 
