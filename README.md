@@ -28,27 +28,27 @@ O banco de dados foi projetado para suportar o acompanhamento histórico e a evo
 ## 🚀 Backlog de Implementação
 
 ### Épico 1: Fundação & Segurança
-- [ ] Setup do ambiente NestJS + PostgreSQL.
-- [ ] Implementação de Migrations com as entidades `Personal` e `Aluno`.
-- [ ] Auth Service: Cadastro e Login com BCrypt e JWT.
-- [ ] Middleware de validação de Roles (Personal vs Aluno).
+- [x] Setup do ambiente NestJS + PostgreSQL.
+- [x] Implementação de Migrations com as entidades `Personal` e `Aluno`.
+- [x] Auth Service: Cadastro e Login com BCrypt e JWT.
+- [x] Middleware de validação de Roles (Personal vs Aluno).
 
 ### Épico 2: Gestão de Alunos
-- [ ] CRUD de Alunos (Vinculação obrigatória ao `idpersonal`).
-- [ ] Implementação do campo `nascimento` (DATE) e `criadoEm`.
-- [ ] Filtro de segurança: Personal só acessa seus próprios alunos.
+- [x] CRUD de Alunos (Vinculação obrigatória ao `idpersonal`).
+- [x] Implementação do campo `nascimento` (DATE) e `criadoEm`.
+- [x] Filtro de segurança: Personal só acessa seus próprios alunos.
 
 ### Épico 3: Módulo de Treinos (The Core)
-- [ ] Cadastro de Catálogo de Exercícios.
-- [ ] Engine de Montagem de Treino: Relação entre `Treino` e `Treino_Item`.
-- [ ] Lógica de ordenação de exercícios na prescrição.
+- [x] Cadastro de Catálogo de Exercícios.
+- [x] Engine de Montagem de Treino: Relação entre `Treino` e `Treino_Item`.
+- [x] Lógica de ordenação de exercícios na prescrição.
 
 ### Épico 4: Engine de Avaliação Física
-- [ ] Endpoint de recebimento de medidas (Dobras e Perímetros).
-- [ ] **Service de Inteligência:**
+- [x] Endpoint de recebimento de medidas (Dobras e Perímetros).
+- [x] **Service de Inteligência:**
     - Cálculo automático de **IMC**, **IAC** e **RCQ**.
     - Cálculo de Composição Corporal (% Gordura, Massa Magra/Óssea/Residual).
-- [ ] Histórico evolutivo para consumo de gráficos no Frontend.
+- [x] Histórico evolutivo para consumo de gráficos no Frontend.
 
 ---
 

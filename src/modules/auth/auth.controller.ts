@@ -2,7 +2,9 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterPersonalDto, RegisterAlunoDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { Public } from './decorators/public.decorator';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -19,13 +21,16 @@ export class AuthController {
 
   @Post('aluno/register')
   async registerAluno(@Body() dto: RegisterAlunoDto) {
-    // Alunos normalmente seriam cadastrados por um Personal já logado
-    // Porém aqui ele fica exposto apenas para simplificar/autenticação modular
     return this.authService.registerAluno(dto);
   }
 
   @Post('aluno/login')
   async loginAluno(@Body() dto: LoginDto) {
     return this.authService.loginAluno(dto);
+  }
+
+  @Post('login')
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 }

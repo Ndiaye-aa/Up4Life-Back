@@ -1,9 +1,12 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  engineType = "library"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Personal {
@@ -27,7 +30,71 @@ model Aluno {
   historicoSaude String?   @map("historico_saude") @db.Text
   criadoEm       DateTime? @default(dbgenerated("CURRENT_DATE")) @map("criado_em") @db.Date
 
-  personal Personal? @relation(fields: [personalId], references: [id], onDelete: SetNull)
+  personal   Personal?   @relation(fields: [personalId], references: [id], onDelete: SetNull)
+  avaliacoes Avaliacao[]
+  treinos    Treino[]
 
   @@map("aluno")
+}
+
+model Avaliacao {
+  id          Int      @id @default(autoincrement())
+  alunoId     Int      @map("id_aluno")
+  peso        Decimal  @db.Decimal(5, 2)
+  altura      Decimal  @db.Decimal(3, 2)
+  idade       Int
+  cintura     Decimal? @db.Decimal(5, 2)
+  quadril     Decimal? @db.Decimal(5, 2)
+  peitoral    Decimal? @db.Decimal(5, 2)
+  axilarMedia Decimal? @map("axilar_media") @db.Decimal(5, 2)
+  triceps     Decimal? @db.Decimal(5, 2)
+  subescapular Decimal? @db.Decimal(5, 2)
+  abdominal   Decimal? @db.Decimal(5, 2)
+  supraIliaca Decimal? @map("supra_iliaca") @db.Decimal(5, 2)
+  coxa        Decimal? @db.Decimal(5, 2)
+  imc         Decimal? @db.Decimal(5, 2)
+  iac         Decimal? @db.Decimal(5, 2)
+  densidadeCorporal Decimal? @map("densidade_corporal") @db.Decimal(6, 4)
+  percentualGordura Decimal? @map("percentual_gordura") @db.Decimal(5, 2)
+  dataAvaliacao DateTime @default(now()) @map("data_avaliacao")
+
+  aluno Aluno @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@map("avaliacao")
+}
+
+model Treino {
+  id           Int          @id @default(autoincrement())
+  alunoId      Int          @map("id_aluno")
+  objetivo     String       @db.VarChar(100)
+  dataValidade DateTime?    @map("data_validade")
+  criadoEm     DateTime     @default(now()) @map("criado_em")
+
+  aluno Aluno        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  itens ItemTreino[]
+
+  @@map("treino")
+}
+
+model ItemTreino {
+  id         Int     @id @default(autoincrement())
+  treinoId   Int     @map("id_treino")
+  exercicio  String  @db.VarChar(100)
+  series     Int
+  repeticoes String  @db.VarChar(20)
+  carga      String? @db.VarChar(20)
+  ordem      Int
+  descanso   Int?
+
+  treino Treino @relation(fields: [treinoId], references: [id], onDelete: Cascade)
+
+  @@map("item_treino")
+}
+
+model Exercicio {
+  id             Int    @id @default(autoincrement())
+  nome           String @db.VarChar(100) @unique
+  grupoMuscular  String @map("grupo_muscular") @db.VarChar(50)
+
+  @@map("exercicio")
 }

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 import * as dotenv from 'dotenv';
@@ -97,6 +97,7 @@ describe('AuthController (e2e)', () => {
 
     beforeAll(async () => {
       const personal = await prisma.personal.findUnique({ where: { telefone: '99999999999' } });
+      if (!personal) throw new Error('Personal de setup não encontrado.');
       personalId = personal.id;
     });
 

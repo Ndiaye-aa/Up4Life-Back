@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Personal, Aluno } from '@prisma/client';
 import { RegisterPersonalDto, RegisterAlunoDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -13,7 +14,8 @@ export class AuthService {
   ) {}
 
   async registerPersonal(dto: RegisterPersonalDto) {
-    const existingUser = await this.prisma.personal.findUnique({ where: { telefone: dto.telefone } });
+    const telefone = dto.telefone.replace(/\D/g, '');
+    const existingUser = await this.prisma.personal.findUnique({ where: { telefone } });
     if (existingUser) {
       throw new ConflictException('Telefone já cadastrado.');
     }
@@ -24,7 +26,7 @@ export class AuthService {
     const personal = await this.prisma.personal.create({
       data: {
         nome: dto.nome,
-        telefone: dto.telefone,
+        telefone,
         senha: hashedPassword,
       },
     });
@@ -35,7 +37,8 @@ export class AuthService {
   }
 
   async loginPersonal(dto: LoginDto) {
-    const personal = await this.prisma.personal.findUnique({ where: { telefone: dto.telefone } });
+    const telefone = dto.telefone.replace(/\D/g, '');
+    const personal = await this.prisma.personal.findUnique({ where: { telefone } });
     if (!personal) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
@@ -49,13 +52,14 @@ export class AuthService {
     const { senha, ...result } = personal;
 
     return {
-      user: result,
+      user: { ...result, role: 'PERSONAL' },
       access_token: this.jwtService.sign(payload),
     };
   }
 
   async registerAluno(dto: RegisterAlunoDto) {
-    const existingAluno = await this.prisma.aluno.findUnique({ where: { telefone: dto.telefone } });
+    const telefone = dto.telefone.replace(/\D/g, '');
+    const existingAluno = await this.prisma.aluno.findUnique({ where: { telefone } });
     if (existingAluno) {
       throw new ConflictException('Telefone já cadastrado como aluno.');
     }
@@ -66,7 +70,7 @@ export class AuthService {
     const aluno = await this.prisma.aluno.create({
       data: {
         nome: dto.nome,
-        telefone: dto.telefone,
+        telefone,
         senha: hashedPassword,
         personalId: dto.personalId,
       },
@@ -77,7 +81,8 @@ export class AuthService {
   }
 
   async loginAluno(dto: LoginDto) {
-    const aluno = await this.prisma.aluno.findUnique({ where: { telefone: dto.telefone } });
+    const telefone = dto.telefone.replace(/\D/g, '');
+    const aluno = await this.prisma.aluno.findUnique({ where: { telefone } });
     if (!aluno) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
@@ -91,7 +96,34 @@ export class AuthService {
     const { senha, ...result } = aluno;
 
     return {
-      user: result,
+      user: { ...result, role: 'ALUNO' },
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+  async login(dto: LoginDto) {
+    const telefone = dto.telefone.replace(/\D/g, '');
+    let user: Personal | Aluno | null = await this.prisma.personal.findUnique({ where: { telefone } });
+    let role = 'PERSONAL';
+
+    if (!user) {
+      user = await this.prisma.aluno.findUnique({ where: { telefone } });
+      role = 'ALUNO';
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    const isMatch = await bcrypt.compare(dto.senha, user.senha);
+    if (!isMatch) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    const payload = { sub: user.id, role };
+    const { senha, ...result } = user;
+
+    return {
+      user: { ...result, role },
       access_token: this.jwtService.sign(payload),
     };
   }
