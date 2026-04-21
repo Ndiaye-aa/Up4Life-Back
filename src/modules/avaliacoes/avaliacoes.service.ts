@@ -63,6 +63,13 @@ export class AvaliacoesService {
     });
   }
 
+  async findAllByPersonal(personalId: number) {
+    return this.prisma.avaliacao.findMany({
+      where: { aluno: { personalId } },
+      orderBy: { dataAvaliacao: 'desc' },
+    });
+  }
+
   async findAllByAluno(alunoId: number, userId: number, role: string) {
     const aluno = await this.prisma.aluno.findUnique({ where: { id: alunoId } });
     if (!aluno) {

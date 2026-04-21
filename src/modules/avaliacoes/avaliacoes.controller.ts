@@ -17,6 +17,12 @@ export class AvaliacoesController {
     return this.avaliacoesService.create(dto, personalId);
   }
 
+  @Get()
+  @Roles('PERSONAL')
+  findAll(@User('id') personalId: number) {
+    return this.avaliacoesService.findAllByPersonal(personalId);
+  }
+
   @Get('aluno/:alunoId')
   @Roles('PERSONAL', 'ALUNO')
   findAllByAluno(

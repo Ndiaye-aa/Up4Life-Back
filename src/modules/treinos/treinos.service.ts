@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateTreinoDto } from './dto/create-treino.dto';
 
@@ -111,6 +111,27 @@ export class TreinosService {
     }
 
     return treino;
+  }
+
+  async findAllByPersonal(personalId: number) {
+    return this.prisma.treino.findMany({
+      where: { aluno: { personalId } },
+      include: {
+        aluno: { select: { nome: true, personalId: true } },
+        itens: { orderBy: { ordem: 'asc' } },
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
+  }
+
+  async findMeuTreino(alunoId: number) {
+    return this.prisma.treino.findMany({
+      where: { alunoId },
+      include: {
+        itens: { orderBy: { ordem: 'asc' } },
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
   }
 
   async remove(id: number, personalId: number) {

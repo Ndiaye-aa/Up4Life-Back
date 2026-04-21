@@ -17,6 +17,18 @@ export class TreinosController {
     return this.treinosService.create(dto, personalId);
   }
 
+  @Get()
+  @Roles('PERSONAL')
+  findAllByPersonal(@User('id') personalId: number) {
+    return this.treinosService.findAllByPersonal(personalId);
+  }
+
+  @Get('meu-treino')
+  @Roles('ALUNO')
+  findMeuTreino(@User('id') alunoId: number) {
+    return this.treinosService.findMeuTreino(alunoId);
+  }
+
   @Get('aluno/:alunoId')
   @Roles('PERSONAL', 'ALUNO')
   findAll(
