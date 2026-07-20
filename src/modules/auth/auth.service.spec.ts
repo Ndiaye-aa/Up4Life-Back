@@ -10,7 +10,6 @@ jest.mock('bcrypt');
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: PrismaService;
-  let jwt: JwtService;
 
   const mockPrismaService = {
     personal: {
@@ -19,7 +18,6 @@ describe('AuthService', () => {
     },
     aluno: {
       findUnique: jest.fn(),
-      create: jest.fn(),
     },
   };
 
@@ -38,7 +36,6 @@ describe('AuthService', () => {
 
     service = module.get<AuthService>(AuthService);
     prisma = module.get<PrismaService>(PrismaService);
-    jwt = module.get<JwtService>(JwtService);
   });
 
   afterEach(() => {
@@ -50,11 +47,19 @@ describe('AuthService', () => {
   });
 
   describe('registerPersonal', () => {
-    const dto = { nome: 'Test Personal', telefone: '11999999999', senha: 'password123' };
+    const dto = {
+      nome: 'Test Personal',
+      telefone: '11999999999',
+      senha: 'password123',
+    };
 
     it('should register a new personal trainer', async () => {
       mockPrismaService.personal.findUnique.mockResolvedValue(null);
-      mockPrismaService.personal.create.mockResolvedValue({ id: 1, ...dto, senha: 'hashedPassword' });
+      mockPrismaService.personal.create.mockResolvedValue({
+        id: 1,
+        ...dto,
+        senha: 'hashedPassword',
+      });
 
       const result = await service.registerPersonal(dto);
 
@@ -63,16 +68,44 @@ describe('AuthService', () => {
       expect(prisma.personal.create).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException if telefone already exists', async () => {
-      mockPrismaService.personal.findUnique.mockResolvedValue({ id: 1, ...dto });
+    it('should normalize telefone before persisting', async () => {
+      mockPrismaService.personal.findUnique.mockResolvedValue(null);
+      mockPrismaService.personal.create.mockResolvedValue({
+        id: 1,
+        ...dto,
+        senha: 'hashedPassword',
+      });
 
-      await expect(service.registerPersonal(dto)).rejects.toThrow(ConflictException);
+      await service.registerPersonal({ ...dto, telefone: '(11) 99999-9999' });
+
+      expect(prisma.personal.findUnique).toHaveBeenCalledWith({
+        where: { telefone: '11999999999' },
+      });
+      expect(prisma.personal.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ telefone: '11999999999' }),
+      });
+    });
+
+    it('should throw ConflictException if telefone already exists', async () => {
+      mockPrismaService.personal.findUnique.mockResolvedValue({
+        id: 1,
+        ...dto,
+      });
+
+      await expect(service.registerPersonal(dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
   describe('loginPersonal', () => {
     const dto = { telefone: '11999999999', senha: 'password123' };
-    const personal = { id: 1, nome: 'Test', telefone: dto.telefone, senha: 'hashedPassword' };
+    const personal = {
+      id: 1,
+      nome: 'Test',
+      telefone: dto.telefone,
+      senha: 'hashedPassword',
+    };
 
     it('should return access token on successful login', async () => {
       mockPrismaService.personal.findUnique.mockResolvedValue(personal);
@@ -88,34 +121,31 @@ describe('AuthService', () => {
       mockPrismaService.personal.findUnique.mockResolvedValue(personal);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.loginPersonal(dto)).rejects.toThrow(UnauthorizedException);
-    });
-  });
-
-  describe('registerAluno', () => {
-    const dto = { nome: 'Test Aluno', telefone: '11888888888', senha: 'password123', personalId: 1 };
-
-    it('should register a new aluno', async () => {
-      mockPrismaService.aluno.findUnique.mockResolvedValue(null);
-      mockPrismaService.aluno.create.mockResolvedValue({ id: 2, ...dto, senha: 'hashedPassword' });
-
-      const result = await service.registerAluno(dto);
-
-      expect(result).toHaveProperty('id');
-      expect(result).not.toHaveProperty('senha');
-      expect(prisma.aluno.create).toHaveBeenCalled();
+      await expect(service.loginPersonal(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
-    it('should throw ConflictException if telefone already exists as aluno', async () => {
-      mockPrismaService.aluno.findUnique.mockResolvedValue({ id: 2, ...dto });
+    it('should compare against a dummy hash when telefone is unknown (timing)', async () => {
+      mockPrismaService.personal.findUnique.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.registerAluno(dto)).rejects.toThrow(ConflictException);
+      await expect(service.loginPersonal(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(bcrypt.compare).toHaveBeenCalled();
     });
   });
 
   describe('loginAluno', () => {
     const dto = { telefone: '11888888888', senha: 'password123' };
-    const aluno = { id: 2, nome: 'Test', telefone: dto.telefone, senha: 'hashedPassword' };
+    const aluno = {
+      id: 2,
+      nome: 'Test',
+      telefone: dto.telefone,
+      senha: 'hashedPassword',
+      ativo: true,
+    };
 
     it('should return access token on successful login', async () => {
       mockPrismaService.aluno.findUnique.mockResolvedValue(aluno);
@@ -131,7 +161,21 @@ describe('AuthService', () => {
       mockPrismaService.aluno.findUnique.mockResolvedValue(aluno);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.loginAluno(dto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.loginAluno(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should reject login for deactivated aluno', async () => {
+      mockPrismaService.aluno.findUnique.mockResolvedValue({
+        ...aluno,
+        ativo: false,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.loginAluno(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

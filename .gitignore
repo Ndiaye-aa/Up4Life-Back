@@ -22,9 +22,7 @@ npm-debug.log*
 docs/
 
 # 💎 Prisma
-/prisma/migrations/
-# Se você quiser versionar as migrations (recomendado), remova a linha acima.
-# Mantenha apenas o arquivo de sqlite se estiver usando localmente:
+# Migrations são versionadas (necessário para reproduzir o schema em produção).
 *.db
 *.db-journal
 

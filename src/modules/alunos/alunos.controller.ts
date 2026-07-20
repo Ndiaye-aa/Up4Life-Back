@@ -1,14 +1,21 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { AlunosService } from './alunos.service';
 import { CreateAlunoDto } from './dto/create-aluno.dto';
 import { UpdateAlunoDto } from './dto/update-aluno.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { User } from '../auth/decorators/user.decorator';
 import { GetPersonalId } from '../auth/decorators/get-personal-id.decorator';
 
 @Controller('alunos')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('PERSONAL')
 export class AlunosController {
   constructor(private readonly alunosService: AlunosService) {}
@@ -23,8 +30,23 @@ export class AlunosController {
     return this.alunosService.findAllByPersonal(personalId);
   }
 
+  @Get('me')
+  @Roles('ALUNO')
+  findSelf(@User('id') alunoId: number) {
+    return this.alunosService.findSelf(alunoId);
+  }
+
+  @Patch('me')
+  @Roles('ALUNO')
+  updateSelf(@Body() dto: UpdateAlunoDto, @User('id') alunoId: number) {
+    return this.alunosService.updateSelf(alunoId, dto);
+  }
+
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number, @GetPersonalId() personalId: number) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @GetPersonalId() personalId: number,
+  ) {
     return this.alunosService.findOne(id, personalId);
   }
 
@@ -38,7 +60,10 @@ export class AlunosController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @GetPersonalId() personalId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @GetPersonalId() personalId: number,
+  ) {
     return this.alunosService.remove(id, personalId);
   }
 }

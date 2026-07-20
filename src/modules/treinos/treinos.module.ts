@@ -4,6 +4,6 @@ import { TreinosService } from './treinos.service';
 
 @Module({
   controllers: [TreinosController],
-  providers: [TreinosService]
+  providers: [TreinosService],
 })
 export class TreinosModule {}

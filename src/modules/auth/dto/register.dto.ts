@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsPhoneNumber, IsOptional, IsNumber } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsPhoneNumber,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 
 export class RegisterPersonalDto {
   @IsNotEmpty()
@@ -12,24 +18,7 @@ export class RegisterPersonalDto {
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(6)
+  @MaxLength(72)
   senha: string;
-}
-
-export class RegisterAlunoDto {
-  @IsNotEmpty()
-  @IsString()
-  nome: string;
-
-  @IsNotEmpty()
-  @IsPhoneNumber('BR')
-  @IsString()
-  telefone: string;
-
-  @IsNotEmpty()
-  @IsString()
-  senha: string;
-
-  @IsNotEmpty()
-  @IsNumber()
-  personalId: number;
 }

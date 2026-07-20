@@ -1,32 +1,56 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import { calculateIMC, calculateIAC } from '../../common/calculations/indices';
-import { calculatePollock7Folds } from '../../common/calculations/body-composition';
+import {
+  calculatePollock7FoldsMale,
+  calculatePollock7FoldsFemale,
+} from '../../common/calculations/body-composition';
 
 @Injectable()
 export class AvaliacoesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateAvaliacaoDto, personalId: number) {
-    // 1. Validar aluno
-    const aluno = await this.prisma.aluno.findUnique({
-      where: { id: dto.alunoId },
-    });
+    const { alunoId, paraMim, sexo, ...medidas } = dto;
 
-    if (!aluno) {
-      throw new NotFoundException('Aluno não encontrado.');
+    if (paraMim && alunoId != null) {
+      throw new BadRequestException(
+        'Informe alunoId ou paraMim, nunca os dois.',
+      );
     }
 
-    if (aluno.personalId !== personalId) {
-      throw new ForbiddenException('Acesso negado.');
+    // 1. Resolver o dono: aluno do personal ou o próprio personal (autoavaliação via JWT)
+    let sexoRef: string | null;
+    if (paraMim) {
+      sexoRef = sexo ?? null;
+    } else {
+      const aluno = await this.prisma.aluno.findUnique({
+        where: { id: alunoId },
+      });
+
+      if (!aluno) {
+        throw new NotFoundException('Aluno não encontrado.');
+      }
+
+      if (aluno.personalId !== personalId) {
+        throw new ForbiddenException('Acesso negado.');
+      }
+
+      sexoRef = aluno.sexo;
     }
 
     // 2. Executar cálculos para persistência
     const imc = calculateIMC(dto.peso, dto.altura);
     const iac = dto.quadril ? calculateIAC(dto.quadril, dto.altura) : null;
 
-    let pollockResult: { densidade: number; percentualGordura: number } | null = null;
+    let pollockResult: { densidade: number; percentualGordura: number } | null =
+      null;
     if (
       dto.peitoral &&
       dto.axilarMedia &&
@@ -36,6 +60,11 @@ export class AvaliacoesService {
       dto.supraIliaca &&
       dto.coxa
     ) {
+      const calculatePollock7Folds =
+        sexoRef === 'F'
+          ? calculatePollock7FoldsFemale
+          : calculatePollock7FoldsMale;
+
       pollockResult = calculatePollock7Folds(
         dto.idade,
         dto.peitoral,
@@ -54,24 +83,31 @@ export class AvaliacoesService {
     // 3. Persistir medidas e resultados
     return this.prisma.avaliacao.create({
       data: {
-        ...dto,
+        ...medidas,
+        alunoId: paraMim ? null : alunoId,
+        personalId: paraMim ? personalId : null,
         imc: clamp(imc, 999.99),
         iac: clamp(iac, 999.99),
         densidadeCorporal: clamp(pollockResult?.densidade ?? null, 99.9999),
-        percentualGordura: clamp(pollockResult?.percentualGordura ?? null, 999.99),
+        percentualGordura: clamp(
+          pollockResult?.percentualGordura ?? null,
+          999.99,
+        ),
       },
     });
   }
 
   async findAllByPersonal(personalId: number) {
     return this.prisma.avaliacao.findMany({
-      where: { aluno: { personalId } },
+      where: { OR: [{ aluno: { personalId } }, { personalId }] },
       orderBy: { dataAvaliacao: 'desc' },
     });
   }
 
   async findAllByAluno(alunoId: number, userId: number, role: string) {
-    const aluno = await this.prisma.aluno.findUnique({ where: { id: alunoId } });
+    const aluno = await this.prisma.aluno.findUnique({
+      where: { id: alunoId },
+    });
     if (!aluno) {
       throw new NotFoundException('Aluno não encontrado.');
     }

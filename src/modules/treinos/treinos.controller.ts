@@ -1,13 +1,20 @@
-import { Controller, Get, Post, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { TreinosService } from './treinos.service';
 import { CreateTreinoDto } from './dto/create-treino.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { UpdateTreinoDto } from './dto/update-treino.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../auth/decorators/user.decorator';
 
 @Controller('treinos')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class TreinosController {
   constructor(private readonly treinosService: TreinosService) {}
 
@@ -47,9 +54,22 @@ export class TreinosController {
     return this.treinosService.findOne(id, user.id, user.role);
   }
 
+  @Patch(':id')
+  @Roles('PERSONAL')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTreinoDto,
+    @User('id') personalId: number,
+  ) {
+    return this.treinosService.update(id, dto, personalId);
+  }
+
   @Delete(':id')
   @Roles('PERSONAL')
-  remove(@Param('id', ParseIntPipe) id: number, @User('id') personalId: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @User('id') personalId: number,
+  ) {
     return this.treinosService.remove(id, personalId);
   }
 }

@@ -1,10 +1,19 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Personal, Aluno } from '@prisma/client';
-import { RegisterPersonalDto, RegisterAlunoDto } from './dto/register.dto';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { normalizarTelefone } from '../../common/utils/telefone';
+import { RegisterPersonalDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+
+// Hash de senha inexistente: comparado quando o telefone não está cadastrado,
+// para que o tempo de resposta não revele quais telefones existem no banco.
+const DUMMY_HASH = bcrypt.hashSync('senha-invalida-para-timing', 10);
 
 @Injectable()
 export class AuthService {
@@ -14,8 +23,10 @@ export class AuthService {
   ) {}
 
   async registerPersonal(dto: RegisterPersonalDto) {
-    const telefone = dto.telefone.replace(/\D/g, '');
-    const existingUser = await this.prisma.personal.findUnique({ where: { telefone } });
+    const telefone = normalizarTelefone(dto.telefone);
+    const existingUser = await this.prisma.personal.findUnique({
+      where: { telefone },
+    });
     if (existingUser) {
       throw new ConflictException('Telefone já cadastrado.');
     }
@@ -23,33 +34,44 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(dto.senha, salt);
 
-    const personal = await this.prisma.personal.create({
-      data: {
-        nome: dto.nome,
-        telefone,
-        senha: hashedPassword,
-      },
-    });
+    try {
+      const personal = await this.prisma.personal.create({
+        data: {
+          nome: dto.nome,
+          telefone,
+          senha: hashedPassword,
+        },
+      });
 
-    // Removendo senha do retorno
-    const { senha, ...result } = personal;
-    return result;
+      const { senha: _senha, ...result } = personal;
+      return result;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Telefone já cadastrado.');
+      }
+      throw error;
+    }
   }
 
   async loginPersonal(dto: LoginDto) {
-    const telefone = dto.telefone.replace(/\D/g, '');
-    const personal = await this.prisma.personal.findUnique({ where: { telefone } });
-    if (!personal) {
-      throw new UnauthorizedException('Credenciais inválidas.');
-    }
+    const telefone = normalizarTelefone(dto.telefone);
+    const personal = await this.prisma.personal.findUnique({
+      where: { telefone },
+    });
 
-    const isMatch = await bcrypt.compare(dto.senha, personal.senha);
-    if (!isMatch) {
+    const isMatch = await bcrypt.compare(
+      dto.senha,
+      personal?.senha ?? DUMMY_HASH,
+    );
+    if (!personal || !isMatch) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
     const payload = { sub: personal.id, role: 'PERSONAL' };
-    const { senha, ...result } = personal;
+    const { senha: _senha, ...result } = personal;
 
     return {
       user: { ...result, role: 'PERSONAL' },
@@ -57,73 +79,26 @@ export class AuthService {
     };
   }
 
-  async registerAluno(dto: RegisterAlunoDto) {
-    const telefone = dto.telefone.replace(/\D/g, '');
-    const existingAluno = await this.prisma.aluno.findUnique({ where: { telefone } });
-    if (existingAluno) {
-      throw new ConflictException('Telefone já cadastrado como aluno.');
-    }
-
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(dto.senha, salt);
-
-    const aluno = await this.prisma.aluno.create({
-      data: {
-        nome: dto.nome,
-        telefone,
-        senha: hashedPassword,
-        personalId: dto.personalId,
-      },
-    });
-
-    const { senha, ...result } = aluno;
-    return result;
-  }
-
   async loginAluno(dto: LoginDto) {
-    const telefone = dto.telefone.replace(/\D/g, '');
+    const telefone = normalizarTelefone(dto.telefone);
     const aluno = await this.prisma.aluno.findUnique({ where: { telefone } });
-    if (!aluno) {
+
+    const isMatch = await bcrypt.compare(dto.senha, aluno?.senha ?? DUMMY_HASH);
+    if (!aluno || !isMatch) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    const isMatch = await bcrypt.compare(dto.senha, aluno.senha);
-    if (!isMatch) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+    if (!aluno.ativo) {
+      throw new UnauthorizedException(
+        'Conta desativada. Fale com seu personal.',
+      );
     }
 
     const payload = { sub: aluno.id, role: 'ALUNO' };
-    const { senha, ...result } = aluno;
+    const { senha: _senha, ...result } = aluno;
 
     return {
       user: { ...result, role: 'ALUNO' },
-      access_token: this.jwtService.sign(payload),
-    };
-  }
-  async login(dto: LoginDto) {
-    const telefone = dto.telefone.replace(/\D/g, '');
-    let user: Personal | Aluno | null = await this.prisma.personal.findUnique({ where: { telefone } });
-    let role = 'PERSONAL';
-
-    if (!user) {
-      user = await this.prisma.aluno.findUnique({ where: { telefone } });
-      role = 'ALUNO';
-    }
-
-    if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas.');
-    }
-
-    const isMatch = await bcrypt.compare(dto.senha, user.senha);
-    if (!isMatch) {
-      throw new UnauthorizedException('Credenciais inválidas.');
-    }
-
-    const payload = { sub: user.id, role };
-    const { senha, ...result } = user;
-
-    return {
-      user: { ...result, role },
       access_token: this.jwtService.sign(payload),
     };
   }

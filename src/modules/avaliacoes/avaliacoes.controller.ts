@@ -1,13 +1,17 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { AvaliacoesService } from './avaliacoes.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../auth/decorators/user.decorator';
 
 @Controller('avaliacoes')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class AvaliacoesController {
   constructor(private readonly avaliacoesService: AvaliacoesService) {}
 

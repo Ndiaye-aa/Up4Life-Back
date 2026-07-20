@@ -1,4 +1,14 @@
-import { IsNotEmpty, IsString, IsPhoneNumber, IsOptional, IsEnum, IsDate, MaxDate } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsPhoneNumber,
+  IsOptional,
+  IsEnum,
+  IsDate,
+  MaxDate,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateAlunoDto {
@@ -11,9 +21,13 @@ export class CreateAlunoDto {
   @IsString()
   telefone: string;
 
-  @IsNotEmpty()
+  // Opcional: quando ausente, o servidor gera uma senha inicial aleatória
+  // e a retorna uma única vez no campo `senhaInicial` da resposta de criação.
+  @IsOptional()
   @IsString()
-  senha: string;
+  @MinLength(6)
+  @MaxLength(72)
+  senha?: string;
 
   @IsOptional()
   @IsEnum(['M', 'F'], { message: 'Sexo deve ser M ou F' })
