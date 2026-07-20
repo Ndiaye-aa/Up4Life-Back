@@ -39,9 +39,13 @@ Exercicio (catálogo global, sem relações)
 | Método | Endpoint | Descrição |
 | :--- | :--- | :--- |
 | `POST` | `/auth/personal/register` | Cadastro de Personal |
-| `POST` | `/auth/personal/login` | Login de Personal → retorna JWT |
-| `POST` | `/auth/aluno/register` | Cadastro de Aluno (requer personalId) |
-| `POST` | `/auth/aluno/login` | Login de Aluno → retorna JWT |
+| `POST` | `/auth/personal/login` | Login de Personal → cookies httpOnly + `access_token` no corpo |
+| `POST` | `/auth/aluno/login` | Login de Aluno → cookies httpOnly + `access_token` no corpo |
+| `POST` | `/auth/refresh` | Renova o `access_token` usando o `refresh_token` (cookie) |
+| `POST` | `/auth/logout` | Revoga o refresh token e limpa os cookies de sessão |
+| `GET` | `/auth/me` | Retorna o usuário autenticado (via cookie ou header) |
+
+Não existe cadastro público de Aluno: o cadastro é feito exclusivamente pelo Personal autenticado via `POST /alunos`, para impedir vincular um aluno a um `personalId` arbitrário.
 
 ### Alunos (role: PERSONAL)
 
@@ -105,14 +109,21 @@ npm run start:dev
 
 ### Variáveis de Ambiente
 
+Veja `.env.example` para a lista completa e comentada. Resumo:
+
 ```env
 PORT=3000
 NODE_ENV=development
 DATABASE_URL=postgresql://user:password@host:5432/dbname
 JWT_SECRET=chave_secreta_longa_e_aleatoria
 JWT_EXPIRES_IN=1d
-FRONTEND_URL=http://localhost:3001
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=30d
+COOKIE_DOMAIN=
+FRONTEND_URL=http://localhost:5173,http://localhost:5174
 ```
+
+Em produção (`NODE_ENV=production`), os cookies de sessão saem com `Secure` e `SameSite=None`, e a proteção CSRF (double-submit cookie) é sempre aplicada — não depende de nenhuma flag adicional. `FRONTEND_URL` deve listar exatamente os domínios de produção do front (sem barra final), pois é a whitelist usada tanto pelo CORS quanto implicitamente pela política de cookies cross-site.
 
 ### Comandos úteis
 

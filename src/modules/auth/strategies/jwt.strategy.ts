@@ -1,6 +1,7 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import type { Request } from 'express';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { getJwtSecret } from '../../../common/config/env';
 
@@ -9,11 +10,22 @@ interface JwtPayload {
   role: 'PERSONAL' | 'ALUNO';
 }
 
+// Extrai do cookie httpOnly `access_token`. Aceitar também o header Bearer é
+// uma retrocompatibilidade temporária durante o rollout (ver Fase 3 do plano
+// de migração para cookies) — remover fromAuthHeaderAsBearerToken depois que
+// nenhum cliente antigo depender mais dele.
+const cookieExtractor = (req: Request): string | null => {
+  return req?.cookies?.access_token || null;
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        cookieExtractor,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: getJwtSecret(),
     });

@@ -14,6 +14,7 @@ export class ExerciciosController {
   }
 
   @Get()
+  @Roles('PERSONAL', 'ALUNO')
   findAll(@Query('grupoMuscular') grupoMuscular?: string) {
     if (grupoMuscular) {
       return this.exerciciosService.findByGrupo(grupoMuscular);

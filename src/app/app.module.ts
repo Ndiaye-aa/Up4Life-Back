@@ -16,6 +16,7 @@ import { NotificacoesModule } from '../modules/notificacoes/notificacoes.module'
 import { AgendaModule } from '../modules/agenda/agenda.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../modules/auth/guards/roles.guard';
+import { CsrfGuard } from '../modules/auth/guards/csrf.guard';
 
 @Module({
   imports: [
@@ -36,10 +37,11 @@ import { RolesGuard } from '../modules/auth/guards/roles.guard';
   controllers: [AppController],
   providers: [
     AppService,
-    // A ordem importa: throttling antes de autenticar, roles depois de autenticar.
+    // A ordem importa: throttling antes de autenticar, roles e csrf depois de autenticar.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
   ],
 })
 export class AppModule {}

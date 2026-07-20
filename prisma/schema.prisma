@@ -25,6 +25,7 @@ model Personal {
   avaliacoes        Avaliacao[]
   pushSubscriptions PushSubscription[]
   agendasTreino     AgendaTreino[]
+  refreshTokens     RefreshToken[]
 
   @@map("personal")
 }
@@ -47,6 +48,7 @@ model Aluno {
   agendamentos      AgendamentoAvaliacao[]
   pushSubscriptions PushSubscription[]
   agendaTreino      AgendaTreino?
+  refreshTokens     RefreshToken[]
 
   @@map("aluno")
 }
@@ -64,6 +66,26 @@ model PushSubscription {
   personal Personal? @relation(fields: [personalId], references: [id], onDelete: Cascade)
 
   @@map("push_subscription")
+}
+
+model RefreshToken {
+  id         Int       @id @default(autoincrement())
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(64)
+  personalId Int?      @map("id_personal")
+  alunoId    Int?      @map("id_aluno")
+  role       String    @db.VarChar(10)
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  replacedBy String?   @map("replaced_by") @db.VarChar(64)
+  userAgent  String?   @map("user_agent") @db.Text
+  criadoEm   DateTime  @default(now()) @map("criado_em")
+
+  personal Personal? @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  aluno    Aluno?    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@index([personalId])
+  @@index([alunoId])
+  @@map("refresh_token")
 }
 
 model AgendaTreino {

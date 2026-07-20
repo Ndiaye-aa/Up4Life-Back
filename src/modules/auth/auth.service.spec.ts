@@ -19,6 +19,12 @@ describe('AuthService', () => {
     aluno: {
       findUnique: jest.fn(),
     },
+    refreshToken: {
+      create: jest.fn().mockResolvedValue({}),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
   };
 
   const mockJwtService = {
@@ -176,6 +182,103 @@ describe('AuthService', () => {
       await expect(service.loginAluno(dto)).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('refresh', () => {
+    const storedToken = {
+      tokenHash: 'hash-atual',
+      personalId: 1,
+      alunoId: null,
+      role: 'PERSONAL',
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      revokedAt: null,
+    };
+
+    it('should throw when no refresh token is provided', async () => {
+      await expect(service.refresh(undefined)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw when the refresh token is unknown', async () => {
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue(null);
+
+      await expect(service.refresh('raw-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw when the refresh token is expired', async () => {
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        ...storedToken,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(service.refresh('raw-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should rotate the token and return new tokens when valid', async () => {
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue(
+        storedToken,
+      );
+      mockPrismaService.personal.findUnique.mockResolvedValue({ id: 1 });
+      mockPrismaService.refreshToken.update.mockResolvedValue({});
+
+      const result = await service.refresh('raw-token');
+
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
+      expect(mockPrismaService.refreshToken.create).toHaveBeenCalled();
+      expect(mockPrismaService.refreshToken.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tokenHash: expect.any(String) },
+          data: expect.objectContaining({ revokedAt: expect.any(Date) }),
+        }),
+      );
+    });
+
+    it('should revoke all sessions of the user on refresh token reuse', async () => {
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        ...storedToken,
+        revokedAt: new Date(),
+      });
+      mockPrismaService.refreshToken.updateMany.mockResolvedValue({});
+
+      await expect(service.refresh('raw-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(mockPrismaService.refreshToken.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            revokedAt: null,
+            personalId: storedToken.personalId,
+          }),
+          data: { revokedAt: expect.any(Date) },
+        }),
+      );
+    });
+  });
+
+  describe('revokeRefreshToken', () => {
+    it('should mark the matching token as revoked', async () => {
+      mockPrismaService.refreshToken.updateMany.mockResolvedValue({});
+
+      await service.revokeRefreshToken('raw-token');
+
+      expect(mockPrismaService.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { tokenHash: expect.any(String), revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+
+    it('should do nothing when no token is provided', async () => {
+      await service.revokeRefreshToken(undefined);
+
+      expect(mockPrismaService.refreshToken.updateMany).not.toHaveBeenCalled();
     });
   });
 });
