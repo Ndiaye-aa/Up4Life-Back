@@ -91,7 +91,11 @@ export class AuthService {
     });
     res.cookie('refresh_token', tokens.refreshToken, {
       ...base,
-      path: '/auth',
+      // Em produção o front chama via proxy same-origin em /api/auth/*
+      // (ver vercel.json do front); em dev o front chama o backend direto
+      // em /auth/*. O Path do cookie precisa bater com o path real da
+      // requisição de refresh, senão o navegador não o envia.
+      path: isProd ? '/api/auth' : '/auth',
       maxAge: getRefreshTokenExpiresInMs(),
     });
     res.cookie('csrf_token', tokens.csrfToken, {
@@ -112,7 +116,10 @@ export class AuthService {
     };
 
     res.clearCookie('access_token', base);
-    res.clearCookie('refresh_token', { ...base, path: '/auth' });
+    res.clearCookie('refresh_token', {
+      ...base,
+      path: isProd ? '/api/auth' : '/auth',
+    });
     res.clearCookie('csrf_token', { ...base, httpOnly: false });
   }
 
