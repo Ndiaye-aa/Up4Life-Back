@@ -71,10 +71,16 @@ export class AuthService {
 
   setAuthCookies(res: Response, tokens: AuthTokens) {
     const isProd = isProductionEnv();
+    // 'lax' funciona porque o front acessa a API via proxy same-origin
+    // (Vercel rewrite de /api/* para este backend) — o navegador nunca vê
+    // isto como cross-site. 'none' era necessário quando o front chamava a
+    // API diretamente por outro domínio, mas Safari iOS/Chrome mobile e
+    // in-app browsers bloqueiam cookies SameSite=None de terceiros por
+    // padrão, causando falhas de CSRF só no mobile.
     const base = {
       httpOnly: true,
       secure: isProd,
-      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      sameSite: 'lax' as 'none' | 'lax',
       domain: getCookieDomain(),
       path: '/',
     };
@@ -100,7 +106,7 @@ export class AuthService {
     const base = {
       httpOnly: true,
       secure: isProd,
-      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      sameSite: 'lax' as 'none' | 'lax',
       domain: getCookieDomain(),
       path: '/',
     };
