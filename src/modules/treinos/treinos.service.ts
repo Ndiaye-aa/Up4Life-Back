@@ -60,6 +60,41 @@ export class TreinosService {
     }
   }
 
+  private async attachGrupoMuscular<
+    T extends { itens: { exercicio: string }[] },
+  >(treino: T): Promise<T> {
+    const [enriched] = await this.attachGrupoMuscularMany([treino]);
+    return enriched;
+  }
+
+  private async attachGrupoMuscularMany<
+    T extends { itens: { exercicio: string }[] },
+  >(treinos: T[]): Promise<T[]> {
+    const nomes = [
+      ...new Set(treinos.flatMap((t) => t.itens.map((i) => i.exercicio))),
+    ];
+
+    if (nomes.length === 0) {
+      return treinos;
+    }
+
+    const exercicios = await this.prisma.exercicio.findMany({
+      where: { nome: { in: nomes } },
+      select: { nome: true, grupoMuscular: true },
+    });
+    const grupoPorNome = new Map(
+      exercicios.map((e) => [e.nome, e.grupoMuscular]),
+    );
+
+    return treinos.map((treino) => ({
+      ...treino,
+      itens: treino.itens.map((item) => ({
+        ...item,
+        grupoMuscular: grupoPorNome.get(item.exercicio) ?? null,
+      })),
+    }));
+  }
+
   private async resolveOwner(
     dto: { paraMim?: boolean; alunoId?: number },
     personalId: number,
@@ -84,8 +119,8 @@ export class TreinosService {
     await this.validateItens(dto.itens);
 
     // Persistir treino e itens em uma transação explícita
-    return this.prisma.$transaction(async (tx) => {
-      const treino = await tx.treino.create({
+    const treino = await this.prisma.$transaction(async (tx) => {
+      return tx.treino.create({
         data: {
           alunoId: owner.alunoId,
           personalId: owner.personalId,
@@ -104,9 +139,9 @@ export class TreinosService {
           },
         },
       });
-
-      return treino;
     });
+
+    return this.attachGrupoMuscular(treino);
   }
 
   async findAllByAluno(alunoId: number, userId: number, role: string) {
@@ -123,7 +158,7 @@ export class TreinosService {
       throw new ForbiddenException('Acesso negado.');
     }
 
-    return this.prisma.treino.findMany({
+    const treinos = await this.prisma.treino.findMany({
       where: { alunoId },
       include: {
         itens: {
@@ -132,6 +167,8 @@ export class TreinosService {
       },
       orderBy: { criadoEm: 'desc' },
     });
+
+    return this.attachGrupoMuscularMany(treinos);
   }
 
   async findOne(id: number, userId: number, role: string) {
@@ -157,11 +194,11 @@ export class TreinosService {
       throw new ForbiddenException('Acesso negado.');
     }
 
-    return treino;
+    return this.attachGrupoMuscular(treino);
   }
 
   async findAllByPersonal(personalId: number) {
-    return this.prisma.treino.findMany({
+    const treinos = await this.prisma.treino.findMany({
       where: { OR: [{ aluno: { personalId } }, { personalId }] },
       include: {
         aluno: { select: { nome: true, personalId: true } },
@@ -170,16 +207,20 @@ export class TreinosService {
       },
       orderBy: { criadoEm: 'desc' },
     });
+
+    return this.attachGrupoMuscularMany(treinos);
   }
 
   async findMeuTreino(alunoId: number) {
-    return this.prisma.treino.findMany({
+    const treinos = await this.prisma.treino.findMany({
       where: { alunoId },
       include: {
         itens: { orderBy: { ordem: 'asc' } },
       },
       orderBy: { criadoEm: 'desc' },
     });
+
+    return this.attachGrupoMuscularMany(treinos);
   }
 
   async update(id: number, dto: UpdateTreinoDto, personalId: number) {
@@ -192,7 +233,7 @@ export class TreinosService {
     await this.validateItens(dto.itens);
 
     // 3. Substitui os itens por completo (payload sempre vem com a lista inteira)
-    return this.prisma.$transaction(async (tx) => {
+    const treino = await this.prisma.$transaction(async (tx) => {
       await tx.itemTreino.deleteMany({ where: { treinoId: id } });
 
       return tx.treino.update({
@@ -216,6 +257,8 @@ export class TreinosService {
         },
       });
     });
+
+    return this.attachGrupoMuscular(treino);
   }
 
   async remove(id: number, personalId: number) {
