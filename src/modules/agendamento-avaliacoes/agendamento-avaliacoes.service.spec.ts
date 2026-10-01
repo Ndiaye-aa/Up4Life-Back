@@ -3,6 +3,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { StatusAgendamento } from '@prisma/client';
 import { AgendamentoAvaliacoesService } from './agendamento-avaliacoes.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OwnershipService } from '../../common/ownership/ownership.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 describe('AgendamentoAvaliacoesService', () => {
@@ -41,6 +42,7 @@ describe('AgendamentoAvaliacoesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AgendamentoAvaliacoesService,
+        OwnershipService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: NotificacoesService, useValue: mockNotificacoesService },
       ],

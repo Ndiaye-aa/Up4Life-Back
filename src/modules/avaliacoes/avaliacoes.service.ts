@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
@@ -14,6 +15,8 @@ import {
 
 @Injectable()
 export class AvaliacoesService {
+  private readonly logger = new Logger(AvaliacoesService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateAvaliacaoDto, personalId: number) {
@@ -77,8 +80,16 @@ export class AvaliacoesService {
       );
     }
 
-    const clamp = (v: number | null, max: number): number | null =>
-      v !== null && Math.abs(v) > max ? null : v;
+    const donoRef = paraMim ? `personal ${personalId}` : `aluno ${alunoId}`;
+    const clamp = (label: string, v: number | null, max: number): number | null => {
+      if (v !== null && Math.abs(v) > max) {
+        this.logger.warn(
+          `${label} calculado fora da faixa esperada (${v}) para ${donoRef} — descartado como null. Verifique os dados de entrada (ex.: altura em cm em vez de metros).`,
+        );
+        return null;
+      }
+      return v;
+    };
 
     // 3. Persistir medidas e resultados
     return this.prisma.avaliacao.create({
@@ -86,10 +97,15 @@ export class AvaliacoesService {
         ...medidas,
         alunoId: paraMim ? null : alunoId,
         personalId: paraMim ? personalId : null,
-        imc: clamp(imc, 999.99),
-        iac: clamp(iac, 999.99),
-        densidadeCorporal: clamp(pollockResult?.densidade ?? null, 99.9999),
+        imc: clamp('IMC', imc, 999.99),
+        iac: clamp('IAC', iac, 999.99),
+        densidadeCorporal: clamp(
+          'Densidade corporal',
+          pollockResult?.densidade ?? null,
+          99.9999,
+        ),
         percentualGordura: clamp(
+          '% de gordura',
           pollockResult?.percentualGordura ?? null,
           999.99,
         ),
@@ -98,9 +114,28 @@ export class AvaliacoesService {
   }
 
   async findAllByPersonal(personalId: number) {
+    // select enxuto: esta listagem alimenta dashboards/telas de overview que não
+    // consomem anamnese nem dobras cutâneas cruas (ver findAllByAluno para o
+    // registro completo, usado na tela de resultados/anamnese por aluno).
     return this.prisma.avaliacao.findMany({
       where: { OR: [{ aluno: { personalId } }, { personalId }] },
       orderBy: { dataAvaliacao: 'desc' },
+      select: {
+        id: true,
+        alunoId: true,
+        peso: true,
+        altura: true,
+        idade: true,
+        cintura: true,
+        quadril: true,
+        peitoral: true,
+        coxa: true,
+        abdominal: true,
+        imc: true,
+        iac: true,
+        percentualGordura: true,
+        dataAvaliacao: true,
+      },
     });
   }
 

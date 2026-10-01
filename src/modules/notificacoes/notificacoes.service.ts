@@ -140,7 +140,11 @@ export class NotificacoesService {
           if (statusCode === 404 || statusCode === 410) {
             await this.prisma.pushSubscription
               .delete({ where: { id: sub.id } })
-              .catch(() => undefined);
+              .catch((deleteError) =>
+                this.logger.error(
+                  `Falha ao remover subscription morta ${sub.id}: ${String(deleteError)}`,
+                ),
+              );
           } else {
             this.logger.error(
               `Falha ao enviar push para ${destino}: ${String(error)}`,

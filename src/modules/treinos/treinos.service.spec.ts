@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TreinosService } from './treinos.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OwnershipService } from '../../common/ownership/ownership.service';
 
 describe('TreinosService', () => {
   let service: TreinosService;
@@ -29,6 +30,7 @@ describe('TreinosService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TreinosService,
+        OwnershipService,
         { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();

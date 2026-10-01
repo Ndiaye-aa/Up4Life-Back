@@ -5,6 +5,7 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizarTelefone } from '../../common/utils/telefone';
@@ -66,16 +67,26 @@ export class PersonaisService {
       }
     }
 
-    const updatedPersonal = await this.prisma.personal.update({
-      where: { id },
-      data: {
-        nome: dto.nome,
-        telefone,
-        senha: hashedPassword,
-      },
-    });
+    try {
+      const updatedPersonal = await this.prisma.personal.update({
+        where: { id },
+        data: {
+          nome: dto.nome,
+          telefone,
+          senha: hashedPassword,
+        },
+      });
 
-    const { senha: _senha, ...result } = updatedPersonal;
-    return result;
+      const { senha: _senha, ...result } = updatedPersonal;
+      return result;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Telefone já cadastrado.');
+      }
+      throw error;
+    }
   }
 }

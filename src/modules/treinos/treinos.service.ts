@@ -1,36 +1,21 @@
 import {
   Injectable,
-  ForbiddenException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OwnershipService } from '../../common/ownership/ownership.service';
 import { CreateTreinoDto } from './dto/create-treino.dto';
 import { UpdateTreinoDto } from './dto/update-treino.dto';
 import { CreateItemTreinoDto } from './dto/create-item-treino.dto';
 
 @Injectable()
 export class TreinosService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private async validateAlunoPertenceAoPersonal(
-    alunoId: number,
-    personalId: number,
-  ) {
-    const aluno = await this.prisma.aluno.findUnique({
-      where: { id: alunoId },
-    });
-
-    if (!aluno) {
-      throw new NotFoundException('Aluno não encontrado.');
-    }
-
-    if (aluno.personalId !== personalId) {
-      throw new ForbiddenException(
-        'Você só pode prescrever treinos para seus próprios alunos.',
-      );
-    }
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownership: OwnershipService,
+  ) {}
 
   private async validateItens(itens: CreateItemTreinoDto[]) {
     // 1. Validar duplicidade de ordem nos itens
@@ -110,7 +95,10 @@ export class TreinosService {
       return { alunoId: null, personalId };
     }
 
-    await this.validateAlunoPertenceAoPersonal(dto.alunoId!, personalId);
+    await this.ownership.assertAlunoPertenceAoPersonal(
+      dto.alunoId!,
+      personalId,
+    );
     return { alunoId: dto.alunoId!, personalId: null };
   }
 
@@ -225,7 +213,7 @@ export class TreinosService {
 
   async update(id: number, dto: UpdateTreinoDto, personalId: number) {
     // 1. Garante que o treino existe e pertence a este personal (direto ou via aluno)
-    await this.findOne(id, personalId, 'PERSONAL');
+    await this.ownership.assertTreinoPertenceAoPersonal(id, personalId);
 
     // 2. Resolve o dono de destino (aluno do personal ou o próprio personal)
     const owner = await this.resolveOwner(dto, personalId);
@@ -262,7 +250,7 @@ export class TreinosService {
   }
 
   async remove(id: number, personalId: number) {
-    await this.findOne(id, personalId, 'PERSONAL');
+    await this.ownership.assertTreinoPertenceAoPersonal(id, personalId);
     return this.prisma.treino.delete({ where: { id } });
   }
 }

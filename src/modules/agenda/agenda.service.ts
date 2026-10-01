@@ -1,33 +1,14 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OwnershipService } from '../../common/ownership/ownership.service';
 import { SaveAgendaDto } from './dto/save-agenda.dto';
 
 @Injectable()
 export class AgendaService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private async validateAlunoPertenceAoPersonal(
-    alunoId: number,
-    personalId: number,
-  ) {
-    const aluno = await this.prisma.aluno.findUnique({
-      where: { id: alunoId },
-    });
-
-    if (!aluno) {
-      throw new NotFoundException('Aluno não encontrado.');
-    }
-
-    if (aluno.personalId !== personalId) {
-      throw new ForbiddenException(
-        'Você só pode definir a agenda dos seus próprios alunos.',
-      );
-    }
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownership: OwnershipService,
+  ) {}
 
   async findAllByPersonal(personalId: number) {
     const agendas = await this.prisma.agendaTreino.findMany({
@@ -43,7 +24,7 @@ export class AgendaService {
   }
 
   async save(personalId: number, alunoId: number, dto: SaveAgendaDto) {
-    await this.validateAlunoPertenceAoPersonal(alunoId, personalId);
+    await this.ownership.assertAlunoPertenceAoPersonal(alunoId, personalId);
 
     await this.prisma.agendaTreino.upsert({
       where: { alunoId },
@@ -64,6 +45,8 @@ export class AgendaService {
   }
 
   async remove(personalId: number, alunoId: number) {
+    await this.ownership.assertAlunoPertenceAoPersonal(alunoId, personalId);
+
     await this.prisma.agendaTreino.deleteMany({
       where: { alunoId, personalId },
     });

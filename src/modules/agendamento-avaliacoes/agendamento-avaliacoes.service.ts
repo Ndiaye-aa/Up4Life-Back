@@ -1,10 +1,13 @@
 import {
+  ConflictException,
   Injectable,
   ForbiddenException,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OwnershipService } from '../../common/ownership/ownership.service';
 import { CreateAgendamentoAvaliacaoDto } from './dto/create-agendamento-avaliacao.dto';
 import { UpdateAgendamentoAvaliacaoDto } from './dto/update-agendamento-avaliacao.dto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
@@ -17,6 +20,7 @@ export class AgendamentoAvaliacoesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificacoes: NotificacoesService,
+    private readonly ownership: OwnershipService,
   ) {}
 
   // O cron das 8:00 já passou quando um agendamento é criado/remarcado para o
@@ -47,25 +51,6 @@ export class AgendamentoAvaliacoesService {
       );
   }
 
-  private async validateAlunoPertenceAoPersonal(
-    alunoId: number,
-    personalId: number,
-  ) {
-    const aluno = await this.prisma.aluno.findUnique({
-      where: { id: alunoId },
-    });
-
-    if (!aluno) {
-      throw new NotFoundException('Aluno não encontrado.');
-    }
-
-    if (aluno.personalId !== personalId) {
-      throw new ForbiddenException(
-        'Você só pode agendar avaliações para seus próprios alunos.',
-      );
-    }
-  }
-
   // Impede vincular avaliação alheia (o vínculo é @unique e desligaria o
   // agendamento original de outro personal via SetNull).
   private async validateAvaliacaoPertenceAoPersonal(
@@ -92,7 +77,10 @@ export class AgendamentoAvaliacoesService {
   }
 
   async create(dto: CreateAgendamentoAvaliacaoDto, personalId: number) {
-    await this.validateAlunoPertenceAoPersonal(dto.alunoId, personalId);
+    await this.ownership.assertAlunoPertenceAoPersonal(
+      dto.alunoId,
+      personalId,
+    );
 
     const agendamento = await this.prisma.agendamentoAvaliacao.create({
       data: {
@@ -138,7 +126,10 @@ export class AgendamentoAvaliacoesService {
     }
 
     if (dto.alunoId !== undefined) {
-      await this.validateAlunoPertenceAoPersonal(dto.alunoId, personalId);
+      await this.ownership.assertAlunoPertenceAoPersonal(
+        dto.alunoId,
+        personalId,
+      );
     }
 
     if (dto.avaliacaoId !== undefined) {
@@ -152,21 +143,36 @@ export class AgendamentoAvaliacoesService {
       dto.dataAgendada !== undefined &&
       dto.dataAgendada.getTime() !== agendamento.dataAgendada.getTime();
 
-    const atualizado = await this.prisma.agendamentoAvaliacao.update({
-      where: { id },
-      data: {
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.avaliacaoId !== undefined && { avaliacaoId: dto.avaliacaoId }),
-        ...(dto.dataAgendada !== undefined && {
-          dataAgendada: dto.dataAgendada,
-        }),
-        ...(dto.alunoId !== undefined && { alunoId: dto.alunoId }),
-        ...(remarcado && { lembreteVesperaEm: null, lembreteDiaEm: null }),
-      },
-      include: {
-        aluno: { select: { nome: true, sexo: true } },
-      },
-    });
+    let atualizado;
+    try {
+      atualizado = await this.prisma.agendamentoAvaliacao.update({
+        where: { id },
+        data: {
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.avaliacaoId !== undefined && {
+            avaliacaoId: dto.avaliacaoId,
+          }),
+          ...(dto.dataAgendada !== undefined && {
+            dataAgendada: dto.dataAgendada,
+          }),
+          ...(dto.alunoId !== undefined && { alunoId: dto.alunoId }),
+          ...(remarcado && { lembreteVesperaEm: null, lembreteDiaEm: null }),
+        },
+        include: {
+          aluno: { select: { nome: true, sexo: true } },
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Esta avaliação já está vinculada a outro agendamento.',
+        );
+      }
+      throw error;
+    }
 
     if (remarcado) {
       this.notificarSeAgendadoParaHoje(atualizado);

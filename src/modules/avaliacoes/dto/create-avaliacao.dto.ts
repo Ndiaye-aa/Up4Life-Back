@@ -4,6 +4,8 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsString,
+  MaxLength,
   Max,
   Min,
   ValidateIf,
@@ -133,4 +135,67 @@ export class CreateAvaliacaoDto {
   @Min(0)
   @Max(999.99)
   perimetroAntebraco?: number;
+
+  // Anamnese
+  @IsOptional()
+  @IsBoolean()
+  praticaAtividadeFisica?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  fumante?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  consomeAlcool?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  possuiDoencaDiagnosticada?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  doencaDescricao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  usaMedicamentoContinuo?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  medicamentoDescricao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  possuiLesaoOuCirurgia?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  lesaoDescricao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  dorArticularOuMuscular?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  dorDescricao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  historicoCardiovascularFamiliar?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  objetivoTreino?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  observacoesAnamnese?: string;
 }

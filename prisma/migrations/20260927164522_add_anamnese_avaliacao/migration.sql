@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "avaliacao" ADD COLUMN     "consome_alcool" BOOLEAN,
+ADD COLUMN     "doenca_descricao" TEXT,
+ADD COLUMN     "dor_articular_ou_muscular" BOOLEAN,
+ADD COLUMN     "dor_descricao" TEXT,
+ADD COLUMN     "fumante" BOOLEAN,
+ADD COLUMN     "historico_cardiovascular_familiar" BOOLEAN,
+ADD COLUMN     "lesao_descricao" TEXT,
+ADD COLUMN     "medicamento_descricao" TEXT,
+ADD COLUMN     "objetivo_treino" TEXT,
+ADD COLUMN     "observacoes_anamnese" TEXT,
+ADD COLUMN     "possui_doenca_diagnosticada" BOOLEAN,
+ADD COLUMN     "possui_lesao_ou_cirurgia" BOOLEAN,
+ADD COLUMN     "pratica_atividade_fisica" BOOLEAN,
+ADD COLUMN     "usa_medicamento_continuo" BOOLEAN;

@@ -130,10 +130,27 @@ model Avaliacao {
   percentualGordura    Decimal? @map("percentual_gordura") @db.Decimal(5, 2)
   dataAvaliacao        DateTime @default(now()) @map("data_avaliacao")
 
+  // Anamnese
+  praticaAtividadeFisica          Boolean? @map("pratica_atividade_fisica")
+  fumante                         Boolean? @map("fumante")
+  consomeAlcool                   Boolean? @map("consome_alcool")
+  possuiDoencaDiagnosticada       Boolean? @map("possui_doenca_diagnosticada")
+  doencaDescricao                 String?  @map("doenca_descricao") @db.Text
+  usaMedicamentoContinuo          Boolean? @map("usa_medicamento_continuo")
+  medicamentoDescricao            String?  @map("medicamento_descricao") @db.Text
+  possuiLesaoOuCirurgia           Boolean? @map("possui_lesao_ou_cirurgia")
+  lesaoDescricao                  String?  @map("lesao_descricao") @db.Text
+  dorArticularOuMuscular          Boolean? @map("dor_articular_ou_muscular")
+  dorDescricao                    String?  @map("dor_descricao") @db.Text
+  historicoCardiovascularFamiliar Boolean? @map("historico_cardiovascular_familiar")
+  objetivoTreino                  String?  @map("objetivo_treino") @db.Text
+  observacoesAnamnese             String?  @map("observacoes_anamnese") @db.Text
+
   aluno       Aluno?                @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   personal    Personal?             @relation(fields: [personalId], references: [id], onDelete: Cascade)
   agendamento AgendamentoAvaliacao?
 
+  @@index([dataAvaliacao])
   @@map("avaliacao")
 }
 
@@ -153,6 +170,9 @@ model AgendamentoAvaliacao {
   personal  Personal   @relation(fields: [personalId], references: [id], onDelete: Cascade)
   avaliacao Avaliacao? @relation(fields: [avaliacaoId], references: [id], onDelete: SetNull)
 
+  @@index([dataAgendada, status])
+  @@index([lembreteDiaEm])
+  @@index([lembreteVesperaEm])
   @@map("agendamento_avaliacao")
 }
 
@@ -169,6 +189,7 @@ model Treino {
   personal Personal?    @relation(fields: [personalId], references: [id], onDelete: Cascade)
   itens    ItemTreino[]
 
+  @@index([criadoEm])
   @@map("treino")
 }
 
