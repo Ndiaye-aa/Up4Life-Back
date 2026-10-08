@@ -18,5 +18,7 @@ export class SaveAgendaDto {
 
   @IsOptional()
   @IsObject()
-  horarios?: Record<string, string>;
+  // { "1": { "hora": "07:00", "modalidade": "PRESENCIAL" } } — o formato
+  // legado { "1": "07:00" } ainda é aceito e convertido (modalidade PRESENCIAL).
+  horarios?: Record<string, string | { hora: string; modalidade?: string }>;
 }

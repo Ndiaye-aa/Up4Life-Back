@@ -118,6 +118,28 @@ export class AlunosService {
     return result;
   }
 
+  async registrarConsentimentoSaude(id: number) {
+    const aluno = await this.prisma.aluno.findUnique({
+      where: { id },
+      select: { consentimentoSaudeEm: true },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado.');
+    }
+
+    // Idempotente: mantém a data do primeiro aceite.
+    const consentimentoSaudeEm = aluno.consentimentoSaudeEm ?? new Date();
+    if (!aluno.consentimentoSaudeEm) {
+      await this.prisma.aluno.update({
+        where: { id },
+        data: { consentimentoSaudeEm },
+      });
+    }
+
+    return { consentimentoSaudeEm };
+  }
+
   async updateSelf(id: number, dto: UpdateAlunoDto) {
     const aluno = await this.prisma.aluno.findUnique({ where: { id } });
 

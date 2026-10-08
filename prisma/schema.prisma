@@ -6,6 +6,30 @@ datasource db {
   provider = "postgresql"
 }
 
+enum StatusSessao {
+  REALIZADA
+  PARCIAL
+  FALTA
+  FALTA_JUSTIFICADA
+
+  @@map("status_sessao")
+}
+
+enum OrigemSessao {
+  ALUNO
+  PERSONAL
+  AUTOMATICA
+
+  @@map("origem_sessao")
+}
+
+enum Modalidade {
+  PRESENCIAL
+  ONLINE
+
+  @@map("modalidade")
+}
+
 enum StatusAgendamento {
   PENDENTE
   REALIZADA
@@ -15,10 +39,11 @@ enum StatusAgendamento {
 }
 
 model Personal {
-  id           Int                    @id @default(autoincrement())
-  nome         String                 @db.VarChar(50)
-  telefone     String                 @unique @db.VarChar(15)
-  senha        String                 @db.VarChar(255)
+  id                Int                    @id @default(autoincrement())
+  nome              String                 @db.VarChar(50)
+  telefone          String                 @unique @db.VarChar(15)
+  senha             String                 @db.VarChar(255)
+  fusoHorario       String                 @default("America/Sao_Paulo") @map("fuso_horario") @db.VarChar(40)
   alunos            Aluno[]
   agendamentos      AgendamentoAvaliacao[]
   treinos           Treino[]
@@ -42,6 +67,8 @@ model Aluno {
   ativo          Boolean   @default(true)
   criadoEm       DateTime? @default(dbgenerated("CURRENT_DATE")) @map("criado_em") @db.Date
 
+  consentimentoSaudeEm DateTime? @map("consentimento_saude_em")
+
   personal          Personal?              @relation(fields: [personalId], references: [id], onDelete: SetNull)
   avaliacoes        Avaliacao[]
   treinos           Treino[]
@@ -49,6 +76,7 @@ model Aluno {
   pushSubscriptions PushSubscription[]
   agendaTreino      AgendaTreino?
   refreshTokens     RefreshToken[]
+  sessoes           SessaoTreino[]
 
   @@map("aluno")
 }
@@ -89,12 +117,17 @@ model RefreshToken {
 }
 
 model AgendaTreino {
-  id           Int      @id @default(autoincrement())
-  personalId   Int      @map("id_personal")
-  alunoId      Int      @unique @map("id_aluno")
-  dias         Int[]
-  horarios     Json?
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  id                  Int      @id @default(autoincrement())
+  personalId          Int      @map("id_personal")
+  alunoId             Int      @unique @map("id_aluno")
+  dias                Int[]
+  // { "1": { "hora": "07:00", "modalidade": "PRESENCIAL" }, ... } (chave = dia da semana, 0 = domingo)
+  horarios            Json?
+  acompanhamentoDesde DateTime @default(dbgenerated("CURRENT_DATE")) @map("acompanhamento_desde") @db.Date
+  // { "1": "2026-10-05", ... } — data em que cada dia da semana entrou na agenda;
+  // o job de faltas não cria falta retroativa para um dia adicionado depois.
+  diasDesde           Json     @default("{}") @map("dias_desde")
+  atualizadoEm        DateTime @updatedAt @map("atualizado_em")
 
   personal Personal @relation(fields: [personalId], references: [id], onDelete: Cascade)
   aluno    Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
@@ -185,9 +218,10 @@ model Treino {
   dataValidade DateTime? @map("data_validade")
   criadoEm     DateTime  @default(now()) @map("criado_em")
 
-  aluno    Aluno?       @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  personal Personal?    @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  aluno    Aluno?         @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  personal Personal?      @relation(fields: [personalId], references: [id], onDelete: Cascade)
   itens    ItemTreino[]
+  sessoes  SessaoTreino[]
 
   @@index([criadoEm])
   @@map("treino")
@@ -216,4 +250,81 @@ model Exercicio {
   descricao     String? @db.Text
 
   @@map("exercicio")
+}
+
+model SessaoTreino {
+  id             Int          @id @default(autoincrement())
+  alunoId        Int          @map("id_aluno")
+  treinoId       Int?         @map("id_treino")
+  treinoObjetivo String?      @map("treino_objetivo") @db.VarChar(100)
+  data           DateTime     @db.Date
+  prevista       Boolean
+  status         StatusSessao
+  origem         OrigemSessao
+  modalidade     Modalidade?
+  iniciadaEm     DateTime?    @map("iniciada_em")
+  concluidaEm    DateTime?    @map("concluida_em")
+  motivoFalta    String?      @map("motivo_falta") @db.VarChar(500)
+
+  // feedback (somente aluno)
+  rpe             Int?    @db.SmallInt
+  disposicao      Int?    @db.SmallInt
+  dor             Boolean @default(false)
+  dorLocal        String? @map("dor_local") @db.VarChar(120)
+  comentarioAluno String? @map("comentario_aluno") @db.VarChar(1000)
+
+  // personal
+  respostaPersonal String?   @map("resposta_personal") @db.VarChar(1000)
+  validadaEm       DateTime? @map("validada_em")
+
+  // reposição
+  reposicaoDeId Int?          @unique @map("id_reposicao_de")
+  reposicaoDe   SessaoTreino? @relation("Reposicao", fields: [reposicaoDeId], references: [id], onDelete: SetNull)
+  repostaPor    SessaoTreino? @relation("Reposicao")
+
+  // notificação de falta (idempotência)
+  notificadoAlunoEm    DateTime? @map("notificado_aluno_em")
+  notificadoPersonalEm DateTime? @map("notificado_personal_em")
+  mensagemChave        String?   @map("mensagem_chave") @db.VarChar(40)
+
+  // controle (null = sistema)
+  atualizadoPorRole String?  @map("atualizado_por_role") @db.VarChar(10)
+  version           Int      @default(0)
+  criadoEm          DateTime @default(now()) @map("criado_em")
+  atualizadoEm      DateTime @updatedAt @map("atualizado_em")
+
+  aluno  Aluno        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  treino Treino?      @relation(fields: [treinoId], references: [id], onDelete: SetNull)
+  itens  SessaoItem[]
+
+  @@unique([alunoId, data])
+  @@index([data, status])
+  @@map("sessao_treino")
+}
+
+model SessaoItem {
+  id            Int      @id @default(autoincrement())
+  sessaoId      Int      @map("id_sessao")
+  ordem         Int
+  exercicio     String   @db.VarChar(120)
+  grupoMuscular String?  @map("grupo_muscular") @db.VarChar(50)
+  seriesFeitas  Int?     @map("series_feitas")
+  repsFeitas    String?  @map("reps_feitas") @db.VarChar(20)
+  cargaTexto    String?  @map("carga_texto") @db.VarChar(30)
+  cargaKg       Decimal? @map("carga_kg") @db.Decimal(6, 2)
+  concluido     Boolean  @default(false)
+
+  sessao SessaoTreino @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+
+  @@unique([sessaoId, ordem])
+  @@map("sessao_item")
+}
+
+model JobLock {
+  nome             String    @id @db.VarChar(60)
+  bloqueadoAte     DateTime  @map("bloqueado_ate")
+  ultimaExecucaoEm DateTime? @map("ultima_execucao_em")
+  ultimoResultado  Json?     @map("ultimo_resultado")
+
+  @@map("job_lock")
 }

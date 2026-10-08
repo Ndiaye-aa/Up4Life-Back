@@ -10,6 +10,16 @@ export interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  /** Notificações com a mesma tag substituem a anterior no sistema operacional. */
+  tag?: string;
+}
+
+export type Destino = { alunoId: number } | { personalId: number };
+
+export interface ResultadoEnvio {
+  inscricoes: number;
+  enviados: number;
+  falhasTransitorias: number;
 }
 
 interface AgendamentoLembrete {
@@ -100,28 +110,36 @@ export class NotificacoesService {
     return { message: 'Notificações desativadas com sucesso.' };
   }
 
-  async enviarParaAluno(alunoId: number, payload: PushPayload) {
-    await this.enviarPara({ alunoId }, payload, `aluno ${alunoId}`);
-  }
-
-  async enviarParaPersonal(personalId: number, payload: PushPayload) {
-    await this.enviarPara({ personalId }, payload, `personal ${personalId}`);
-  }
-
-  private async enviarPara(
-    where: { alunoId: number } | { personalId: number },
+  /**
+   * Envia o push a todas as inscrições do destino. Inscrições mortas (404/410)
+   * são removidas; erros 5xx/rede contam como falhas transitórias para que o
+   * chamador possa tentar de novo.
+   */
+  async enviarParaUsuario(
+    destino: Destino,
     payload: PushPayload,
-    destino: string,
-  ) {
+  ): Promise<ResultadoEnvio> {
+    const subscriptions = await this.prisma.pushSubscription.findMany({
+      where: destino,
+    });
+    const resultado: ResultadoEnvio = {
+      inscricoes: subscriptions.length,
+      enviados: 0,
+      falhasTransitorias: 0,
+    };
+
     if (!this.pushHabilitado) {
-      return;
+      // Sem chaves VAPID nada é entregue; conta como transitório para que a
+      // reserva seja desfeita e o envio ocorra quando a configuração existir.
+      resultado.falhasTransitorias = subscriptions.length;
+      return resultado;
     }
 
-    const subscriptions = await this.prisma.pushSubscription.findMany({
-      where,
-    });
-
     const json = JSON.stringify(payload);
+    const rotulo =
+      'alunoId' in destino
+        ? `aluno ${destino.alunoId}`
+        : `personal ${destino.personalId}`;
 
     await Promise.all(
       subscriptions.map(async (sub) => {
@@ -133,6 +151,7 @@ export class NotificacoesService {
             },
             json,
           );
+          resultado.enviados++;
         } catch (error) {
           const statusCode = (error as { statusCode?: number }).statusCode;
 
@@ -146,13 +165,16 @@ export class NotificacoesService {
                 ),
               );
           } else {
+            resultado.falhasTransitorias++;
             this.logger.error(
-              `Falha ao enviar push para ${destino}: ${String(error)}`,
+              `Falha ao enviar push para ${rotulo}: ${String(error)}`,
             );
           }
         }
       }),
     );
+
+    return resultado;
   }
 
   async enviarLembreteAvaliacao(
@@ -162,19 +184,45 @@ export class NotificacoesService {
     const hora = formatarHoraSp(agendamento.dataAgendada);
     const quando = tipo === 'VESPERA' ? 'amanhã' : 'hoje';
 
-    await this.enviarParaAluno(agendamento.alunoId, {
-      title: 'Up4Life — Avaliação física',
-      body: `Sua avaliação física é ${quando} às ${hora}. 💪`,
-      url: '/dashboard/aluno/avaliacoes',
-    });
+    const resultados: ResultadoEnvio[] = [];
+
+    resultados.push(
+      await this.enviarParaUsuario(
+        { alunoId: agendamento.alunoId },
+        {
+          title: 'Up4Life — Avaliação física',
+          body: `Sua avaliação física é ${quando} às ${hora}. 💪`,
+          url: '/dashboard/aluno/avaliacoes',
+        },
+      ),
+    );
 
     if (agendamento.personalId != null) {
       const nomeAluno = agendamento.aluno?.nome ?? 'seu aluno';
-      await this.enviarParaPersonal(agendamento.personalId, {
-        title: 'Up4Life — Avaliação agendada',
-        body: `Avaliação de ${nomeAluno} é ${quando} às ${hora}. 📋`,
-        url: '/dashboard/admin/avaliacoes',
-      });
+      resultados.push(
+        await this.enviarParaUsuario(
+          { personalId: agendamento.personalId },
+          {
+            title: 'Up4Life — Avaliação agendada',
+            body: `Avaliação de ${nomeAluno} é ${quando} às ${hora}. 📋`,
+            url: '/dashboard/admin/avaliacoes',
+          },
+        ),
+      );
+    }
+
+    // Falha transitória em todos os destinos com inscrição: não marca o
+    // lembrete como enviado, para os gatilhos seguintes (ex.: backup das
+    // 09:15) tentarem de novo. Sem inscrições não há o que reenviar.
+    const comInscricao = resultados.filter((r) => r.inscricoes > 0);
+    const todosFalharam =
+      comInscricao.length > 0 &&
+      comInscricao.every((r) => r.enviados === 0 && r.falhasTransitorias > 0);
+    if (todosFalharam) {
+      this.logger.warn(
+        `Lembrete ${tipo} do agendamento ${agendamento.id} não enviado (falha transitória); será tentado novamente.`,
+      );
+      return;
     }
 
     await this.prisma.agendamentoAvaliacao.update({

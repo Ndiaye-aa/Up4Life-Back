@@ -17,6 +17,13 @@ import { User } from '../auth/decorators/user.decorator';
 export class AgendaController {
   constructor(private readonly agendaService: AgendaService) {}
 
+  // Agenda do próprio aluno (somente leitura): base da pré-justificativa.
+  @Get('me')
+  @Roles('ALUNO')
+  findMine(@User('id') alunoId: number) {
+    return this.agendaService.findByAluno(alunoId);
+  }
+
   @Get()
   findAll(@User('id') personalId: number) {
     return this.agendaService.findAllByPersonal(personalId);

@@ -1,0 +1,22 @@
+name: jobs-agendados
+on:
+  schedule:
+    - cron: '15 12 * * *' # 09:15 America/Sao_Paulo (UTC-3, sem horário de verão)
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ secrets.API_URL }} # https://up4life-back.onrender.com
+      JOB_SECRET: ${{ secrets.JOB_SECRET }}
+    steps:
+      - name: Acordar API
+        run: curl -fsS --retry 6 --retry-delay 15 --retry-all-errors --max-time 60 "$API_URL/health"
+      - name: Fechamento de faltas
+        run: >
+          curl -fsS --retry 3 --retry-delay 10 --retry-all-errors --max-time 60
+          -X POST -H "X-Job-Secret: $JOB_SECRET" "$API_URL/internal/jobs/fechamento-faltas"
+      - name: Lembretes de avaliação
+        run: >
+          curl -fsS --retry 3 --retry-delay 10 --retry-all-errors --max-time 60
+          -X POST -H "X-Job-Secret: $JOB_SECRET" "$API_URL/internal/jobs/lembretes-avaliacao"

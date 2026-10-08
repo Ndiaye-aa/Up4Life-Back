@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import cookieParser from 'cookie-parser';
+import { configureApp } from '../../src/app/configure-app';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 import * as dotenv from 'dotenv';
@@ -18,7 +18,7 @@ describe('AuthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.use(cookieParser());
+    configureApp(app);
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 

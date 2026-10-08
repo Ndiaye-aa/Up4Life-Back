@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { LIMITE_LISTAGEM } from '../../common/config/limites';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import { calculateIMC, calculateIAC } from '../../common/calculations/indices';
@@ -81,7 +82,11 @@ export class AvaliacoesService {
     }
 
     const donoRef = paraMim ? `personal ${personalId}` : `aluno ${alunoId}`;
-    const clamp = (label: string, v: number | null, max: number): number | null => {
+    const clamp = (
+      label: string,
+      v: number | null,
+      max: number,
+    ): number | null => {
       if (v !== null && Math.abs(v) > max) {
         this.logger.warn(
           `${label} calculado fora da faixa esperada (${v}) para ${donoRef} — descartado como null. Verifique os dados de entrada (ex.: altura em cm em vez de metros).`,
@@ -117,9 +122,10 @@ export class AvaliacoesService {
     // select enxuto: esta listagem alimenta dashboards/telas de overview que não
     // consomem anamnese nem dobras cutâneas cruas (ver findAllByAluno para o
     // registro completo, usado na tela de resultados/anamnese por aluno).
-    return this.prisma.avaliacao.findMany({
+    const avaliacoes = await this.prisma.avaliacao.findMany({
       where: { OR: [{ aluno: { personalId } }, { personalId }] },
       orderBy: { dataAvaliacao: 'desc' },
+      take: LIMITE_LISTAGEM,
       select: {
         id: true,
         alunoId: true,
@@ -137,6 +143,12 @@ export class AvaliacoesService {
         dataAvaliacao: true,
       },
     });
+    if (avaliacoes.length === LIMITE_LISTAGEM) {
+      this.logger.warn(
+        `Listagem de avaliações do personal ${personalId} atingiu o teto de ${LIMITE_LISTAGEM}; implemente paginação.`,
+      );
+    }
+    return avaliacoes;
   }
 
   async findAllByAluno(alunoId: number, userId: number, role: string) {

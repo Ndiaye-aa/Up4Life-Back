@@ -2,10 +2,12 @@ import {
   IsNotEmpty,
   IsString,
   IsPhoneNumber,
+  IsIn,
   IsOptional,
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { FUSOS_BRASILEIROS } from '../../../common/datas/fuso';
 
 export class UpdatePersonalDto {
   @IsOptional()
@@ -29,4 +31,9 @@ export class UpdatePersonalDto {
   @IsOptional()
   @IsString()
   senhaAtual?: string;
+
+  // Define a data das sessões e os horários da agenda dos alunos do personal.
+  @IsOptional()
+  @IsIn(FUSOS_BRASILEIROS, { message: 'Fuso horário inválido.' })
+  fusoHorario?: string;
 }

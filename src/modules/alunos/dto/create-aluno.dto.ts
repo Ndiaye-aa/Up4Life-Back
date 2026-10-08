@@ -5,11 +5,11 @@ import {
   IsOptional,
   IsEnum,
   IsDate,
-  MaxDate,
   MinLength,
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsNotFutureDate } from '../../../common/validators/is-not-future-date.decorator';
 
 export class CreateAlunoDto {
   @IsNotEmpty()
@@ -36,7 +36,7 @@ export class CreateAlunoDto {
   @IsOptional()
   @Type(() => Date)
   @IsDate()
-  @MaxDate(new Date(), { message: 'Data de nascimento não pode ser no futuro' })
+  @IsNotFutureDate({ message: 'Data de nascimento não pode ser no futuro' })
   nascimento?: Date;
 
   @IsOptional()

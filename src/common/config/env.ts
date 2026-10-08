@@ -23,7 +23,9 @@ export function getRefreshTokenExpiresInMs(): number {
 function parseDurationToMs(value: string): number {
   const match = /^(\d+)(ms|s|m|h|d)$/.exec(value.trim());
   if (!match) {
-    throw new Error(`Duração inválida: "${value}". Use algo como "30d", "15m", "1h".`);
+    throw new Error(
+      `Duração inválida: "${value}". Use algo como "30d", "15m", "1h".`,
+    );
   }
   const amount = Number(match[1]);
   const unit = match[2];
@@ -44,3 +46,23 @@ export function getCookieDomain(): string | undefined {
 export function isProductionEnv(): boolean {
   return process.env.NODE_ENV === 'production';
 }
+
+/** Autentica os gatilhos externos dos jobs (cron-job.org, GitHub Actions). */
+export function getJobSecret(): string {
+  const secret = process.env.JOB_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'JOB_SECRET não está definido (ou tem menos de 32 caracteres). Configure a variável de ambiente antes de iniciar a aplicação.',
+    );
+  }
+  return secret;
+}
+
+const flagLigada = (nome: string): boolean =>
+  (process.env[nome] ?? '').trim().toLowerCase() === 'true';
+
+export const faltasAutomaticasHabilitado = (): boolean =>
+  flagLigada('FALTAS_AUTOMATICAS_ENABLED');
+
+export const faltasNotificacaoHabilitado = (): boolean =>
+  flagLigada('FALTAS_NOTIFICACAO_ENABLED');

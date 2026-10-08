@@ -74,6 +74,7 @@ export class PersonaisService {
           nome: dto.nome,
           telefone,
           senha: hashedPassword,
+          fusoHorario: dto.fusoHorario,
         },
       });
 

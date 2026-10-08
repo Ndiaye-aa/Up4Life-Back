@@ -9,6 +9,7 @@ import * as crypto from 'crypto';
 import type { Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { FUSO_PADRAO } from '../../common/datas/fuso';
 import { normalizarTelefone } from '../../common/utils/telefone';
 import { RegisterPersonalDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -185,7 +186,10 @@ export class AuthService {
 
   async loginAluno(dto: LoginDto, userAgent?: string) {
     const telefone = normalizarTelefone(dto.telefone);
-    const aluno = await this.prisma.aluno.findUnique({ where: { telefone } });
+    const aluno = await this.prisma.aluno.findUnique({
+      where: { telefone },
+      include: { personal: { select: { fusoHorario: true } } },
+    });
 
     const isMatch = await bcrypt.compare(dto.senha, aluno?.senha ?? DUMMY_HASH);
     if (!aluno || !isMatch) {
@@ -198,11 +202,16 @@ export class AuthService {
       );
     }
 
-    const { senha: _senha, ...result } = aluno;
+    const { senha: _senha, personal, ...result } = aluno;
     const tokens = await this.issueTokens(aluno.id, 'ALUNO', userAgent);
 
     return {
-      user: { ...result, role: 'ALUNO' },
+      // O fuso do personal define a "data de hoje" das sessões do aluno.
+      user: {
+        ...result,
+        role: 'ALUNO',
+        fusoHorario: personal?.fusoHorario ?? FUSO_PADRAO,
+      },
       access_token: tokens.accessToken,
       tokens,
     };
@@ -303,11 +312,18 @@ export class AuthService {
 
     const aluno = await this.prisma.aluno.findUnique({
       where: { id: user.id },
+      include: { personal: { select: { fusoHorario: true } } },
     });
     if (!aluno || !aluno.ativo) {
       throw new UnauthorizedException('Sessão inválida.');
     }
-    const { senha: _senha, ...result } = aluno;
-    return { user: { ...result, role: 'ALUNO' } };
+    const { senha: _senha, personal, ...result } = aluno;
+    return {
+      user: {
+        ...result,
+        role: 'ALUNO',
+        fusoHorario: personal?.fusoHorario ?? FUSO_PADRAO,
+      },
+    };
   }
 }

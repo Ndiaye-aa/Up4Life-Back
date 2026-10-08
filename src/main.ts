@@ -1,13 +1,14 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
 import { AppModule } from './app/app.module';
-import { getJwtSecret } from './common/config/env';
+import { configureApp } from './app/configure-app';
+import { getJobSecret, getJwtSecret } from './common/config/env';
 
 // Falha cedo se a configuração obrigatória estiver ausente.
 getJwtSecret();
+getJobSecret();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,8 +22,7 @@ async function bootstrap() {
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   app.use(helmet());
-  app.use(cookieParser());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  configureApp(app);
 
   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
     .split(',')

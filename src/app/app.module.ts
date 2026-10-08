@@ -15,6 +15,10 @@ import { OwnershipModule } from '../common/ownership/ownership.module';
 import { ExerciciosModule } from '../modules/exercicios/exercicios.module';
 import { NotificacoesModule } from '../modules/notificacoes/notificacoes.module';
 import { AgendaModule } from '../modules/agenda/agenda.module';
+import { FaltasModule } from '../modules/faltas/faltas.module';
+import { HealthModule } from '../modules/health/health.module';
+import { JobsModule } from '../modules/jobs/jobs.module';
+import { SessoesTreinoModule } from '../modules/sessoes-treino/sessoes-treino.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../modules/auth/guards/roles.guard';
 import { CsrfGuard } from '../modules/auth/guards/csrf.guard';
@@ -35,6 +39,10 @@ import { CsrfGuard } from '../modules/auth/guards/csrf.guard';
     ExerciciosModule,
     NotificacoesModule,
     AgendaModule,
+    SessoesTreinoModule,
+    FaltasModule,
+    JobsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

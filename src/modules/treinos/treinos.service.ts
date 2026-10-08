@@ -3,7 +3,9 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
+import { LIMITE_LISTAGEM } from '../../common/config/limites';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { OwnershipService } from '../../common/ownership/ownership.service';
 import { CreateTreinoDto } from './dto/create-treino.dto';
@@ -12,6 +14,8 @@ import { CreateItemTreinoDto } from './dto/create-item-treino.dto';
 
 @Injectable()
 export class TreinosService {
+  private readonly logger = new Logger(TreinosService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ownership: OwnershipService,
@@ -194,7 +198,13 @@ export class TreinosService {
         itens: { orderBy: { ordem: 'asc' } },
       },
       orderBy: { criadoEm: 'desc' },
+      take: LIMITE_LISTAGEM,
     });
+    if (treinos.length === LIMITE_LISTAGEM) {
+      this.logger.warn(
+        `Listagem de treinos do personal ${personalId} atingiu o teto de ${LIMITE_LISTAGEM}; implemente paginação.`,
+      );
+    }
 
     return this.attachGrupoMuscularMany(treinos);
   }

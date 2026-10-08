@@ -72,6 +72,31 @@ Não existe cadastro público de Aluno: o cadastro é feito exclusivamente pelo 
 | `GET` | `/treinos/aluno/:alunoId` | Lista treinos do aluno |
 | `GET` | `/treinos/:id` | Detalhe de um treino com itens ordenados |
 
+### Acompanhamento de sessões
+
+| Método | Endpoint | Roles | Descrição |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/sessoes-treino` | PERSONAL, ALUNO | Cria sessão (treino, falta ou pré-justificativa) |
+| `PATCH` | `/sessoes-treino/:id` | PERSONAL, ALUNO | Edita conforme a matriz de permissões; exige `version` (409 se desatualizada) |
+| `GET` | `/sessoes-treino?alunoId&de&ate` | PERSONAL, ALUNO | Lista por período (para o aluno, `alunoId` é ignorado) |
+| `GET` | `/sessoes-treino/:id` | PERSONAL, ALUNO | Detalhe com itens |
+| `DELETE` | `/sessoes-treino/:id` | PERSONAL | Exclui (bloqueado para faltas automáticas) |
+| `POST` | `/alunos/me/consentimento-saude` | ALUNO | Registra o consentimento para dados de saúde |
+| `GET` | `/alunos/:id/progresso?periodo=30d\|90d\|180d` | PERSONAL | Frequência, calendário, carga, avaliações e alertas |
+| `GET` | `/alunos/me/progresso` | ALUNO | Idem, do próprio aluno |
+| `GET` | `/alunos/progresso-resumo` | PERSONAL | Resumo de todos os alunos em uma query |
+| `GET` | `/agenda/me` | ALUNO | Agenda do próprio aluno |
+
+### Jobs internos (header `X-Job-Secret`)
+
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/internal/jobs/fechamento-faltas` | Cria as faltas do dia e envia os pushes (202) |
+| `POST` | `/internal/jobs/lembretes-avaliacao` | Lembretes de avaliação (202) |
+| `GET` | `/health` | Healthcheck público (acorda a instância) |
+
+Gatilhos: cron-job.org (`GET /health` às 08:25 e `POST` às 08:30, fuso America/Sao_Paulo; lembretes às 07:55/08:00), `@Cron` interno e backup no GitHub Actions às 09:15 (`.github/workflows/jobs-agendados.yml`, secrets `API_URL` e `JOB_SECRET`). Após o deploy, rode `npx ts-node scripts/migrar-horarios-agenda.ts` (idempotente).
+
 ### Exercícios (role: PERSONAL)
 
 | Método | Endpoint | Descrição |
@@ -84,7 +109,7 @@ Não existe cadastro público de Aluno: o cadastro é feito exclusivamente pelo 
 ## Como Executar
 
 ### Pré-requisitos
-- Node.js 22+
+- Node.js 22+ (há um `.nvmrc`; o `package.json` exige `>=22`)
 - PostgreSQL (ou acesso ao Supabase)
 
 ### Setup
@@ -121,6 +146,9 @@ ACCESS_TOKEN_EXPIRES_IN=15m
 REFRESH_TOKEN_EXPIRES_IN=30d
 COOKIE_DOMAIN=
 FRONTEND_URL=http://localhost:5173,http://localhost:5174
+JOB_SECRET=             # obrigatório, ≥ 32 caracteres (gatilhos dos jobs)
+FALTAS_AUTOMATICAS_ENABLED=false
+FALTAS_NOTIFICACAO_ENABLED=false
 ```
 
 Em produção (`NODE_ENV=production`), os cookies de sessão saem com `Secure` e `SameSite=None`, e a proteção CSRF (double-submit cookie) é sempre aplicada — não depende de nenhuma flag adicional. `FRONTEND_URL` deve listar exatamente os domínios de produção do front (sem barra final), pois é a whitelist usada tanto pelo CORS quanto implicitamente pela política de cookies cross-site.

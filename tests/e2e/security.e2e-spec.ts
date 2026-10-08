@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import cookieParser from 'cookie-parser';
+import { configureApp } from '../../src/app/configure-app';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 import * as dotenv from 'dotenv';
@@ -19,18 +19,18 @@ describe('Security (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.use(cookieParser());
+    configureApp(app);
     await app.init();
 
     prisma = moduleFixture.get<PrismaService>(PrismaService);
-    await prisma.personal.deleteMany({ where: { telefone: '99000000000' } });
+    await prisma.personal.deleteMany({ where: { telefone: '99999980000' } });
 
     // Obter um token válido para os testes
     await request(app.getHttpServer())
       .post('/auth/personal/register')
       .send({
         nome: 'Security Test User',
-        telefone: '99000000000',
+        telefone: '99999980000',
         senha: 'password123',
       })
       .expect(201);
@@ -38,7 +38,7 @@ describe('Security (e2e)', () => {
     const authResponse = await request(app.getHttpServer())
       .post('/auth/personal/login')
       .send({
-        telefone: '99000000000',
+        telefone: '99999980000',
         senha: 'password123',
       })
       .expect(201);
@@ -48,7 +48,7 @@ describe('Security (e2e)', () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.personal.deleteMany({ where: { telefone: '99000000000' } });
+      await prisma.personal.deleteMany({ where: { telefone: '99999980000' } });
     }
     if (app) {
       await app.close();
@@ -92,7 +92,7 @@ describe('Security (e2e)', () => {
 
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/personal/login')
-        .send({ telefone: '99000000000', senha: 'password123' })
+        .send({ telefone: '99999980000', senha: 'password123' })
         .expect(201);
 
       cookieJar = (
