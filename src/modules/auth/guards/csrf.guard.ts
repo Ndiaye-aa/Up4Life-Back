@@ -36,19 +36,22 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-    const isPublic = this.reflector.getAllAndOverride<boolean>(
-      IS_PUBLIC_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    const skipCsrf = this.reflector.getAllAndOverride<boolean>(
-      SKIP_CSRF_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    const skipCsrf = this.reflector.getAllAndOverride<boolean>(SKIP_CSRF_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
     if (isPublic || skipCsrf) {
       return true;
     }
 
-    const cookieToken = req.cookies?.csrf_token;
+    const cookies = req.cookies as
+      | Record<string, string | undefined>
+      | undefined;
+    const cookieToken = cookies?.csrf_token;
     const headerToken = req.headers['x-csrf-token'];
     const matches =
       typeof cookieToken === 'string' &&

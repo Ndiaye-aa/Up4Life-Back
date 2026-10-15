@@ -42,4 +42,9 @@ export class CreateAlunoDto {
   @IsOptional()
   @IsString()
   historicoSaude?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  academia?: string;
 }

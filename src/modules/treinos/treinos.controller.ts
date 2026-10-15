@@ -11,6 +11,7 @@ import {
 import { TreinosService } from './treinos.service';
 import { CreateTreinoDto } from './dto/create-treino.dto';
 import { UpdateTreinoDto } from './dto/update-treino.dto';
+import { DuplicarTreinoDto } from './dto/duplicar-treino.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../auth/decorators/user.decorator';
 
@@ -62,6 +63,16 @@ export class TreinosController {
     @User('id') personalId: number,
   ) {
     return this.treinosService.update(id, dto, personalId);
+  }
+
+  @Post(':id/duplicar')
+  @Roles('PERSONAL')
+  duplicate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DuplicarTreinoDto,
+    @User('id') personalId: number,
+  ) {
+    return this.treinosService.duplicate(id, dto, personalId);
   }
 
   @Delete(':id')

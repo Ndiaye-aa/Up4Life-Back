@@ -43,7 +43,7 @@ describe('Security (e2e)', () => {
       })
       .expect(201);
 
-    accessToken = authResponse.body.access_token;
+    accessToken = (authResponse.body as { access_token: string }).access_token;
   });
 
   afterAll(async () => {
@@ -59,9 +59,7 @@ describe('Security (e2e)', () => {
     // Não existe /profile na API; a rota equivalente ("quem é o usuário
     // autenticado") é /auth/me, adicionada junto com a migração para cookies.
     it('should deny access to /auth/me without a token', () => {
-      return request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      return request(app.getHttpServer()).get('/auth/me').expect(401);
     });
 
     it('should deny access to /auth/me with an invalid token', () => {
@@ -77,8 +75,9 @@ describe('Security (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
         .then((response) => {
-          expect(response.body.user).toHaveProperty('id');
-          expect(response.body.user).toHaveProperty('role', 'PERSONAL');
+          const { user } = response.body as { user: object };
+          expect(user).toHaveProperty('id');
+          expect(user).toHaveProperty('role', 'PERSONAL');
         });
     });
   });

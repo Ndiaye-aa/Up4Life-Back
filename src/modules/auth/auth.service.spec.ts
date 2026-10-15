@@ -221,9 +221,7 @@ describe('AuthService', () => {
     });
 
     it('should rotate the token and return new tokens when valid', async () => {
-      mockPrismaService.refreshToken.findUnique.mockResolvedValue(
-        storedToken,
-      );
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue(storedToken);
       mockPrismaService.personal.findUnique.mockResolvedValue({ id: 1 });
       mockPrismaService.refreshToken.update.mockResolvedValue({});
 

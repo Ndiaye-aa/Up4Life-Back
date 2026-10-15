@@ -8,9 +8,13 @@ import {
   ArrayNotEmpty,
   ValidateNested,
   IsBoolean,
+  IsEnum,
+  Min,
+  Max,
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TipoTreino } from '@prisma/client';
 import { CreateItemTreinoDto } from './create-item-treino.dto';
 
 export class CreateTreinoDto {
@@ -35,6 +39,16 @@ export class CreateTreinoDto {
   @Type(() => Date)
   @IsDate()
   dataValidade?: Date;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  diaSemana?: number;
+
+  @IsOptional()
+  @IsEnum(TipoTreino)
+  tipo?: TipoTreino;
 
   @IsArray()
   @ArrayNotEmpty()

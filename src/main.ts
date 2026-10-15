@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app/app.module';
@@ -11,7 +12,7 @@ getJwtSecret();
 getJobSecret();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // A maioria dos provedores (Render, Railway, Fly, atrás de um load
   // balancer) termina TLS num proxy e repassa a requisição via HTTP interno
@@ -19,7 +20,7 @@ async function bootstrap() {
   // IP do proxy — o ThrottlerGuard (rate limit por IP) trataria todos os
   // usuários como um só, e cookies Secure dependeriam de detecção errada de
   // HTTPS caso alguma checagem futura passe a usar req.secure.
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  app.set('trust proxy', 1);
 
   app.use(helmet());
   configureApp(app);

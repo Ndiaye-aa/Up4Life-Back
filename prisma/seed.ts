@@ -35,6 +35,27 @@ const exercises = [
   { nome: 'Elevação de Pernas', grupoMuscular: 'Abdômen' },
 ];
 
+const stretches = [
+  { nome: 'Alongamento de Quadríceps', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Isquiotibiais', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Panturrilha', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Glúteo (Piriforme)', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Adutores', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Flexores do Quadril', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Peitoral (Parede)', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Dorsal', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Ombro (Cruzado)', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Tríceps', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Bíceps', grupoMuscular: 'Alongamento' },
+  { nome: 'Alongamento de Antebraço', grupoMuscular: 'Alongamento' },
+  {
+    nome: 'Alongamento Lombar (Posição da Criança)',
+    grupoMuscular: 'Alongamento',
+  },
+  { nome: 'Alongamento de Pescoço', grupoMuscular: 'Alongamento' },
+  { nome: 'Rotação de Tronco (Deitado)', grupoMuscular: 'Alongamento' },
+];
+
 async function main() {
   console.log('🚀 Iniciando o Seed...');
 
@@ -65,6 +86,16 @@ async function main() {
         nome: ex.nome,
         grupoMuscular: ex.grupoMuscular,
       },
+    });
+  }
+
+  console.log('⏳ Semeando alongamentos...');
+
+  for (const st of stretches) {
+    await prisma.alongamento.upsert({
+      where: { nome: st.nome },
+      update: { grupoMuscular: st.grupoMuscular },
+      create: { nome: st.nome, grupoMuscular: st.grupoMuscular },
     });
   }
 

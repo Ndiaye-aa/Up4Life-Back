@@ -92,7 +92,12 @@ export class AgendaService {
     // Sempre um objeto: o Nest responde corpo vazio para `null` e o front falha no `json()`.
     return agenda
       ? this.serializar(agenda)
-      : { alunoId, dias: [], horarios: {}, acompanhamentoDesde: null };
+      : {
+          alunoId,
+          dias: [],
+          horarios: {},
+          acompanhamentoDesde: null,
+        };
   }
 
   private serializar(agenda: {

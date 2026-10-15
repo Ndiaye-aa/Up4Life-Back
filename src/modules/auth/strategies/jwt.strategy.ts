@@ -15,7 +15,10 @@ interface JwtPayload {
 // de migração para cookies) — remover fromAuthHeaderAsBearerToken depois que
 // nenhum cliente antigo depender mais dele.
 const cookieExtractor = (req: Request): string | null => {
-  return req?.cookies?.access_token || null;
+  const cookies = req?.cookies as
+    | Record<string, string | undefined>
+    | undefined;
+  return cookies?.access_token || null;
 };
 
 @Injectable()

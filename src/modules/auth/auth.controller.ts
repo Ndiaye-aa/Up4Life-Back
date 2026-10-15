@@ -74,10 +74,7 @@ export class AuthController {
 
   @Post('logout')
   @RequireAuth()
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.authService.revokeRefreshToken(req.cookies?.refresh_token);
     this.authService.clearAuthCookies(res);
     return { ok: true };

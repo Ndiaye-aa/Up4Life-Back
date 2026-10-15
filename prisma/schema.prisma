@@ -6,6 +6,24 @@ datasource db {
   provider = "postgresql"
 }
 
+enum TipoTreino {
+  EXERCICIOS
+  ALONGAMENTO
+}
+
+enum TipoSerie {
+  NORMAL
+  BI_SET
+  TRI_SET
+  SUPER_SET
+  DROP_SET
+  PIRAMIDE_CRESCENTE
+  PIRAMIDE_DECRESCENTE
+  CIRCUITO
+  REST_PAUSE
+  METODO_21
+}
+
 enum StatusSessao {
   REALIZADA
   PARCIAL
@@ -39,18 +57,20 @@ enum StatusAgendamento {
 }
 
 model Personal {
-  id                Int                    @id @default(autoincrement())
-  nome              String                 @db.VarChar(50)
-  telefone          String                 @unique @db.VarChar(15)
-  senha             String                 @db.VarChar(255)
-  fusoHorario       String                 @default("America/Sao_Paulo") @map("fuso_horario") @db.VarChar(40)
-  alunos            Aluno[]
-  agendamentos      AgendamentoAvaliacao[]
-  treinos           Treino[]
-  avaliacoes        Avaliacao[]
-  pushSubscriptions PushSubscription[]
-  agendasTreino     AgendaTreino[]
-  refreshTokens     RefreshToken[]
+  id                    Int                    @id @default(autoincrement())
+  nome                  String                 @db.VarChar(50)
+  telefone              String                 @unique @db.VarChar(15)
+  senha                 String                 @db.VarChar(255)
+  fusoHorario           String                 @default("America/Sao_Paulo") @map("fuso_horario") @db.VarChar(40)
+  alunos                Aluno[]
+  agendamentos          AgendamentoAvaliacao[]
+  treinos               Treino[]
+  avaliacoes            Avaliacao[]
+  pushSubscriptions     PushSubscription[]
+  agendasTreino         AgendaTreino[]
+  exerciciosFavoritos   ExercicioFavorito[]
+  alongamentosFavoritos AlongamentoFavorito[]
+  refreshTokens         RefreshToken[]
 
   @@map("personal")
 }
@@ -64,6 +84,7 @@ model Aluno {
   sexo           String?   @db.Char(1)
   nascimento     DateTime? @db.Date
   historicoSaude String?   @map("historico_saude") @db.Text
+  academia       String?   @db.VarChar(100)
   ativo          Boolean   @default(true)
   criadoEm       DateTime? @default(dbgenerated("CURRENT_DATE")) @map("criado_em") @db.Date
 
@@ -78,6 +99,7 @@ model Aluno {
   refreshTokens     RefreshToken[]
   sessoes           SessaoTreino[]
 
+  @@index([personalId])
   @@map("aluno")
 }
 
@@ -93,6 +115,8 @@ model PushSubscription {
   aluno    Aluno?    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   personal Personal? @relation(fields: [personalId], references: [id], onDelete: Cascade)
 
+  @@index([alunoId])
+  @@index([personalId])
   @@map("push_subscription")
 }
 
@@ -184,6 +208,8 @@ model Avaliacao {
   agendamento AgendamentoAvaliacao?
 
   @@index([dataAvaliacao])
+  @@index([alunoId])
+  @@index([personalId])
   @@map("avaliacao")
 }
 
@@ -206,17 +232,21 @@ model AgendamentoAvaliacao {
   @@index([dataAgendada, status])
   @@index([lembreteDiaEm])
   @@index([lembreteVesperaEm])
+  @@index([alunoId])
+  @@index([personalId])
   @@map("agendamento_avaliacao")
 }
 
 model Treino {
-  id           Int       @id @default(autoincrement())
-  alunoId      Int?      @map("id_aluno")
-  personalId   Int?      @map("id_personal")
-  objetivo     String    @db.VarChar(100)
-  observacoes  String?   @db.Text
-  dataValidade DateTime? @map("data_validade")
-  criadoEm     DateTime  @default(now()) @map("criado_em")
+  id           Int        @id @default(autoincrement())
+  alunoId      Int?       @map("id_aluno")
+  personalId   Int?       @map("id_personal")
+  objetivo     String     @db.VarChar(100)
+  observacoes  String?    @db.Text
+  dataValidade DateTime?  @map("data_validade")
+  diaSemana    Int?       @map("dia_semana")
+  tipo         TipoTreino @default(EXERCICIOS)
+  criadoEm     DateTime   @default(now()) @map("criado_em")
 
   aluno    Aluno?         @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   personal Personal?      @relation(fields: [personalId], references: [id], onDelete: Cascade)
@@ -224,22 +254,32 @@ model Treino {
   sessoes  SessaoTreino[]
 
   @@index([criadoEm])
+  @@index([alunoId])
+  @@index([personalId])
   @@map("treino")
 }
 
 model ItemTreino {
-  id         Int     @id @default(autoincrement())
-  treinoId   Int     @map("id_treino")
-  exercicio  String  @db.VarChar(100)
-  series     Int
-  repeticoes String  @db.VarChar(20)
-  carga      String? @db.VarChar(20)
-  ordem      Int
-  descanso   Int?
-  obs        String? @db.Text
+  id             Int       @id @default(autoincrement())
+  treinoId       Int       @map("id_treino")
+  exercicio      String    @db.VarChar(100)
+  series         Int
+  repeticoes     String    @db.VarChar(20)
+  carga          String?   @db.VarChar(20)
+  ordem          Int
+  descanso       Int?
+  obs            String?   @db.Text
+  tipoSerie      TipoSerie @default(NORMAL) @map("tipo_serie")
+  // Itens com o mesmo número formam um bloco (bi-set, tri-set, super-set, circuito)
+  grupoCombinado Int?      @map("grupo_combinado")
+  // Quedas do drop-set ou degraus da pirâmide: [{ carga, repeticoes }]
+  etapas         Json?
+  // Micro-pausa do rest-pause, em segundos
+  pausaSegundos  Int?      @map("pausa_segundos")
 
   treino Treino @relation(fields: [treinoId], references: [id], onDelete: Cascade)
 
+  @@index([treinoId])
   @@map("item_treino")
 }
 
@@ -249,7 +289,44 @@ model Exercicio {
   grupoMuscular String  @map("grupo_muscular") @db.VarChar(50)
   descricao     String? @db.Text
 
+  favoritadoPor ExercicioFavorito[]
+
   @@map("exercicio")
+}
+
+model ExercicioFavorito {
+  personalId  Int      @map("id_personal")
+  exercicioId Int      @map("id_exercicio")
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  personal  Personal  @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  exercicio Exercicio @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+
+  @@id([personalId, exercicioId])
+  @@map("exercicio_favorito")
+}
+
+model Alongamento {
+  id            Int     @id @default(autoincrement())
+  nome          String  @unique @db.VarChar(100)
+  grupoMuscular String  @map("grupo_muscular") @db.VarChar(50)
+  descricao     String? @db.Text
+
+  favoritadoPor AlongamentoFavorito[]
+
+  @@map("alongamento")
+}
+
+model AlongamentoFavorito {
+  personalId    Int      @map("id_personal")
+  alongamentoId Int      @map("id_alongamento")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  personal    Personal    @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  alongamento Alongamento @relation(fields: [alongamentoId], references: [id], onDelete: Cascade)
+
+  @@id([personalId, alongamentoId])
+  @@map("alongamento_favorito")
 }
 
 model SessaoTreino {

@@ -52,6 +52,7 @@ export class AlunosService {
           sexo: dto.sexo,
           nascimento: dto.nascimento,
           historicoSaude: dto.historicoSaude,
+          academia: dto.academia?.trim() || null,
           personalId,
         },
       });
@@ -79,6 +80,7 @@ export class AlunosService {
         telefone: true,
         sexo: true,
         nascimento: true,
+        academia: true,
         ativo: true,
         criadoEm: true,
       },
@@ -196,6 +198,11 @@ export class AlunosService {
           sexo: dto.sexo,
           nascimento: dto.nascimento,
           historicoSaude: dto.historicoSaude,
+          // undefined mantém; string vazia limpa o campo
+          academia:
+            dto.academia === undefined
+              ? undefined
+              : dto.academia.trim() || null,
           ativo: dto.ativo,
         },
       });

@@ -8,6 +8,16 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+// Limpeza por lista exata (nunca por prefixo): '99' é um DDD real e o teste roda
+// contra o banco configurado em DATABASE_URL, então não pode apagar usuários reais.
+const TELEFONES_DE_TESTE = ['99999999999', '99988887777', '99977776666'];
+
+interface AuthBody {
+  access_token: string;
+  nome: string;
+  user: { telefone: string };
+}
+
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -25,14 +35,22 @@ describe('AuthController (e2e)', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
 
     // Limpar dados de teste se necessário
-    await prisma.aluno.deleteMany({ where: { telefone: { startsWith: '99' } } });
-    await prisma.personal.deleteMany({ where: { telefone: { startsWith: '99' } } });
+    await prisma.aluno.deleteMany({
+      where: { telefone: { in: TELEFONES_DE_TESTE } },
+    });
+    await prisma.personal.deleteMany({
+      where: { telefone: { in: TELEFONES_DE_TESTE } },
+    });
   });
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.aluno.deleteMany({ where: { telefone: { startsWith: '99' } } });
-      await prisma.personal.deleteMany({ where: { telefone: { startsWith: '99' } } });
+      await prisma.aluno.deleteMany({
+        where: { telefone: { in: TELEFONES_DE_TESTE } },
+      });
+      await prisma.personal.deleteMany({
+        where: { telefone: { in: TELEFONES_DE_TESTE } },
+      });
     }
     if (app) {
       await app.close();
@@ -51,7 +69,7 @@ describe('AuthController (e2e)', () => {
         .expect(201)
         .then((response) => {
           expect(response.body).toHaveProperty('id');
-          expect(response.body.nome).toBe('E2E Personal');
+          expect((response.body as AuthBody).nome).toBe('E2E Personal');
           expect(response.body).not.toHaveProperty('senha');
         });
     });
@@ -79,11 +97,13 @@ describe('AuthController (e2e)', () => {
         .expect(201) // NestJS Post default is 201
         .then((response) => {
           expect(response.body).toHaveProperty('access_token');
-          expect(response.body.user.telefone).toBe('99999999999');
+          expect((response.body as AuthBody).user.telefone).toBe('99999999999');
 
           const cookies = response.headers['set-cookie'] as unknown as string[];
           expect(cookies.some((c) => c.startsWith('access_token='))).toBe(true);
-          expect(cookies.some((c) => c.startsWith('refresh_token='))).toBe(true);
+          expect(cookies.some((c) => c.startsWith('refresh_token='))).toBe(
+            true,
+          );
           expect(cookies.some((c) => c.startsWith('csrf_token='))).toBe(true);
           expect(cookies.find((c) => c.startsWith('access_token='))).toMatch(
             /HttpOnly/i,
@@ -128,7 +148,7 @@ describe('AuthController (e2e)', () => {
         .set('Cookie', cookieJar)
         .expect(200)
         .then((response) => {
-          expect(response.body.user.telefone).toBe('99999999999');
+          expect((response.body as AuthBody).user.telefone).toBe('99999999999');
         });
     });
 
@@ -145,12 +165,8 @@ describe('AuthController (e2e)', () => {
       const newCookies = extractCookieValues(
         response.headers['set-cookie'] as unknown as string[],
       );
-      expect(newCookies.some((c) => c.startsWith('access_token='))).toBe(
-        true,
-      );
-      expect(newCookies.some((c) => c.startsWith('refresh_token='))).toBe(
-        true,
-      );
+      expect(newCookies.some((c) => c.startsWith('access_token='))).toBe(true);
+      expect(newCookies.some((c) => c.startsWith('refresh_token='))).toBe(true);
 
       // O refresh_token antigo foi rotacionado: reapresentá-lo deve falhar.
       await request(app.getHttpServer())
@@ -189,7 +205,7 @@ describe('AuthController (e2e)', () => {
         .post('/auth/personal/login')
         .send({ telefone: '99999999999', senha: 'password123' })
         .expect(201);
-      personalAccessToken = loginResponse.body.access_token;
+      personalAccessToken = (loginResponse.body as AuthBody).access_token;
     });
 
     it('should create a new aluno owned by the authenticated personal', () => {

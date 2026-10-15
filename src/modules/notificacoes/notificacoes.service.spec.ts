@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- acesso a mock.calls (any) em testes */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- acesso a mock.calls (any) em testes */
 import { Test } from '@nestjs/testing';
 import * as webpush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';

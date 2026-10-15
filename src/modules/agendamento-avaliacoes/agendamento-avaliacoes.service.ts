@@ -77,10 +77,7 @@ export class AgendamentoAvaliacoesService {
   }
 
   async create(dto: CreateAgendamentoAvaliacaoDto, personalId: number) {
-    await this.ownership.assertAlunoPertenceAoPersonal(
-      dto.alunoId,
-      personalId,
-    );
+    await this.ownership.assertAlunoPertenceAoPersonal(dto.alunoId, personalId);
 
     const agendamento = await this.prisma.agendamentoAvaliacao.create({
       data: {
@@ -143,7 +140,9 @@ export class AgendamentoAvaliacoesService {
       dto.dataAgendada !== undefined &&
       dto.dataAgendada.getTime() !== agendamento.dataAgendada.getTime();
 
-    let atualizado;
+    let atualizado: Prisma.AgendamentoAvaliacaoGetPayload<{
+      include: { aluno: { select: { nome: true; sexo: true } } };
+    }>;
     try {
       atualizado = await this.prisma.agendamentoAvaliacao.update({
         where: { id },

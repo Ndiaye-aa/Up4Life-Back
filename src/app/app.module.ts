@@ -13,6 +13,7 @@ import { AgendamentoAvaliacoesModule } from '../modules/agendamento-avaliacoes/a
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { OwnershipModule } from '../common/ownership/ownership.module';
 import { ExerciciosModule } from '../modules/exercicios/exercicios.module';
+import { AlongamentosModule } from '../modules/alongamentos/alongamentos.module';
 import { NotificacoesModule } from '../modules/notificacoes/notificacoes.module';
 import { AgendaModule } from '../modules/agenda/agenda.module';
 import { FaltasModule } from '../modules/faltas/faltas.module';
@@ -37,6 +38,7 @@ import { CsrfGuard } from '../modules/auth/guards/csrf.guard';
     AvaliacoesModule,
     AgendamentoAvaliacoesModule,
     ExerciciosModule,
+    AlongamentosModule,
     NotificacoesModule,
     AgendaModule,
     SessoesTreinoModule,
